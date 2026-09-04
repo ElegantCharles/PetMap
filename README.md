@@ -25,12 +25,12 @@ docker compose up --build
 ## 4. Integrantes del equipo y roles
 | Integrante | Rol |
 |---|---|
-| Malhue, Javier |Líder de proyecto / Base de datos |
-| Altamirano, Sebastian | Frontend / QA |
-| Echeverria, Carlos | Backend |
+| Malhue, Javier |Líder de proyecto y base de datos. Coordina al equipo, representa al grupo ante la docente, diseña y gestiona el modelo de base de datos. |
+| Altamirano, Sebastian | Control de calidad y pruebas. Define los casos de prueba, valida cada entrega y detecta errores antes de la revisión. |
+| Echeverria, Carlos | Desarrollo backend y frontend. Construye la API, la aplicación móvil y el despliegue en la nube. |
 
 ## 5. Metodología de trabajo
-[Scrum / Kanban / DevOps. Explica ceremonias, tablero y herramienta usada.]
+Agil Scrum
 
 ## 6. Arquitectura de la solución
 [Descripción o diagrama de arquitectura. Puedes enlazar la imagen en /docs.]

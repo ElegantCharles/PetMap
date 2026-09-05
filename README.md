@@ -1,5 +1,9 @@
 # MeinPets
 
+<p align="center">
+  <img src="assets/logo.png" alt="MeinPets" width="180">
+</p>
+
 ## 1. Descripción del proyecto
 MeinPets es una aplicación móvil para el cuidado y la gestión de la salud de mascotas, orientada a
 dueños de perros y gatos de la Región de Valparaíso.
@@ -54,6 +58,7 @@ FASE 2/
 FASE 3/
   Evidencias Grupales/          Presentación final
   Evidencias Individuales/      Diarios de reflexión y autoevaluaciones
+assets/                         Logo e imágenes del proyecto
 README.md
 ```
 

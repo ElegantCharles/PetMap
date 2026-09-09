@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: meinpets_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-meinpets_db}
+      POSTGRES_USER: ${POSTGRES_USER:-meinpets_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-meinpets_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - meinpets_pgdata:/var/lib/postgresql/data
+      - ./base-de-datos/scripts:/docker-entrypoint-initdb.d:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-meinpets_user} -d $${POSTGRES_DB:-meinpets_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./aplicacion/api
+      dockerfile: Dockerfile
+    container_name: meinpets_api
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      NODE_ENV: ${NODE_ENV:-development}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-meinpets_db}
+      POSTGRES_USER: ${POSTGRES_USER:-meinpets_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-meinpets_password}
+    ports:
+      - "${PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  meinpets_pgdata:

@@ -1,0 +1,16 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+dist/
+build/
+*.log
+.DS_Store
+Thumbs.db
+
+# Expo
+.expo/
+web-build/
+
+# Coverage
+coverage/

@@ -63,7 +63,7 @@ README.md
 ```
 
 ### Requisitos previos
-- Docker y Docker Compose
+- Docker Desktop (en ejecución) y Docker Compose
 - Node.js 20 o superior
 
 ### Servidor (API + base de datos)
@@ -72,15 +72,36 @@ README.md
 git clone https://github.com/ElegantCharles/PetMap.git
 cd "PetMap/FASE 2/Evidencias Proyecto/Evidencias de sistema"
 
-# 2. Variables de entorno (copiar el ejemplo y completar)
+# 2. Variables de entorno (copiar el ejemplo)
 cp .env.example .env
+# En Windows (CMD clásico): copy .env.example .env
 
 # 3. Levantar la API y la base de datos
 docker compose up --build
 ```
 La API queda disponible en `http://localhost:3000`.
 
+Para comprobar el correcto funcionamiento y la conexión con la base de datos:
+- **Ruta de verificación:** `http://localhost:3000/health`
+- **Respuesta esperada:**
+  ```json
+  {
+    "status": "ok",
+    "timestamp": "...",
+    "database": {
+      "connected": true,
+      "postgis": "3.4 USE_GEOS=1 USE_PROJ=1 USE_STATS=1"
+    }
+  }
+  ```
+
+Para detener los contenedores:
+```bash
+docker compose down
+```
+
 ### Aplicación móvil
+En desarrollo para los siguientes avances de Fase 2. Las instrucciones de ejecución con Expo se incorporarán una vez integrado el cliente móvil.
 
 
 ## 4. Integrantes del equipo y roles

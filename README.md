@@ -25,7 +25,7 @@ localizar establecimientos de atención animal cercanos filtrados por categoría
 - **Backend / API:** Node.js + Express
 - **Base de datos:** PostgreSQL 16 + PostGIS (contenedor Docker)
 - **Datos geográficos:** OpenStreetMap, importados vía Overpass API a PostGIS
-- **Cloud / Infraestructura:** Docker + Docker Compose · Oracle Cloud — Ampere A1 Always Free (ARM)
+- **Cloud / Infraestructura:** Docker + Docker Compose
 
 ## 3. Instrucciones para ejecutar el proyecto localmente
 
@@ -67,18 +67,25 @@ README.md
 - Node.js 20 o superior
 
 ### Servidor (API + base de datos)
+El entorno de desarrollo y evaluación se ejecuta de forma local y autónoma mediante Docker Compose.
+
 ```bash
-# 1. Clonar el repositorio
+# 1. Clonar el repositorio y entrar a la carpeta del sistema
 git clone https://github.com/ElegantCharles/PetMap.git
 cd "PetMap/FASE 2/Evidencias Proyecto/Evidencias de sistema"
 
-# 2. Variables de entorno (copiar el ejemplo)
+# 2. Variables de entorno (copiar el ejemplo preconfigurado)
 cp .env.example .env
-# En Windows (CMD clásico): copy .env.example .env
+# En Windows (PowerShell): Copy-Item .env.example .env
+# En Windows (CMD): copy .env.example .env
 
-# 3. Levantar la API y la base de datos
+# 3. Levantar la API y la base de datos con Docker Compose
 docker compose up --build
 ```
+Esto levantará automáticamente:
+* El contenedor **`meinpets_db`**: instancia local de PostgreSQL 16 con PostGIS y ejecución automática del script inicial `01_init.sql`.
+* El contenedor **`meinpets_api`**: la API REST conectada a la base de datos.
+
 La API queda disponible en `http://localhost:3000`.
 
 Para comprobar el correcto funcionamiento y la conexión con la base de datos:
@@ -100,8 +107,45 @@ Para detener los contenedores:
 docker compose down
 ```
 
-### Aplicación móvil
-En desarrollo para los siguientes avances de Fase 2. Las instrucciones de ejecución con Expo se incorporarán una vez integrado el cliente móvil.
+*(Opcional para desarrollo sin Docker en la API: Si se prefiere ejecutar la API directamente con Node.js (`npm run dev`), cambiar `POSTGRES_HOST=db` por `POSTGRES_HOST=localhost` en el archivo `.env` manteniendo el contenedor de la base de datos activo).*
+
+
+
+### Aplicación cliente (Web y Móvil)
+El cliente fue desarrollado con React Native y Expo. Para facilitar la revisión sin requerir instalaciones en teléfonos personales, **la vía principal de visualización es a través del navegador web**. La ejecución en dispositivo móvil físico mediante Expo Go queda disponible como alternativa opcional.
+
+#### 1. Visualización Principal: Navegador Web
+Permite interactuar con la interfaz y probar el flujo de navegación de inmediato en el navegador del computador:
+
+```bash
+# 1. Ingresar a la carpeta de la aplicación
+cd mobile
+
+# 2. Instalar dependencias (solo la primera vez)
+npm install
+
+# 3. Iniciar en el navegador web
+npm run web
+```
+La aplicación se abrirá automáticamente en `http://localhost:8081` (o presionando la tecla `w` en la consola de Expo), permitiendo navegar entre las pantallas de **Acceso**, **Mascotas** y **Mapa**.
+
+---
+
+#### 2. Visualización Opcional: Dispositivo Móvil Físico (Expo Go)
+Para validar el comportamiento en un teléfono real con transiciones nativas:
+
+1. Instalar la aplicación **Expo Go** en el celular (Google Play Store en Android o App Store en iOS, en algunos casos quizas deba iniciar sesion).
+2. Conectar el teléfono a la **misma red Wi-Fi** que la computadora.
+3. Iniciar el servidor Metro:
+   ```bash
+   npm start
+   ```
+4. Escanear el código QR generado en la terminal:
+   - **Android:** Abrir **Expo Go** y pulsar *"Scan QR code"*.
+   - **iOS:** Enfocar el código con la app de la **Cámara**.
+
+> **Configuración de la API:** La URL del backend se encuentra centralizada en `mobile/src/config/api.ts` (`API_CONFIG.BASE_URL`).
+
 
 
 ## 4. Integrantes del equipo y roles

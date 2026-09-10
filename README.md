@@ -151,6 +151,58 @@ Los establecimientos de atención animal se importan una única vez desde OpenSt
 PostGIS, lo que permite realizar las búsquedas por cercanía sobre la base de datos propia sin
 depender de servicios externos en tiempo de ejecución.
 
+## 7. Convención de ramas y flujo de trabajo (Git / Pull Requests)
+
+Para mantener un historial de versiones limpio y garantizar la estabilidad del código, el equipo adopta un flujo basado en dos ramas de largo plazo (`main` y `dev`) y ramas temporales por tarea.
+
+### 7.1 Estructura de ramas principales
+- **`main`**: Código estable y probado, representativo de las entregas oficiales del proyecto. Rechaza pushes directos.
+- **`dev`**: Rama principal de desarrollo e integración diaria. Contiene los últimos avances validados durante el sprint. Rechaza pushes directos.
+
+---
+
+### 7.2 Nomenclatura de ramas de trabajo
+Todas las ramas de trabajo se deben crear obligatoriamente a partir de **`dev`** y seguir la convención:
+
+`<tipo>/sprint<N>/<descripcion-corta>`
+
+#### Tipos de trabajo (`<tipo>`):
+- **`feat`**: Desarrollo de nuevas funcionalidades.
+- **`fix`**: Corrección de errores o bugs.
+- **`db`**: Cambios en la base de datos (scripts DDL, PostGIS, datos iniciales).
+- **`docs`**: Documentación (README, manuales, arquitectura).
+
+---
+
+### 7.3 Flujo de trabajo y Pull Requests (PR)
+
+1. **Creación de la rama:**
+   Actualiza la rama `dev` e inicia tu trabajo:
+   ```bash
+   git checkout dev
+   git pull origin dev
+   git checkout -b <tipo>/sprint<N>/<descripcion-corta>
+   ```
+
+2. **Commits y push:**
+   Registra tus cambios con commits descriptivos y publica la rama remota:
+   ```bash
+   git push origin <tipo>/sprint<N>/<descripcion-corta>
+   ```
+
+3. **Pull Request a `dev`:**
+   - Abre un PR con destino a la rama **`dev`**.
+   - Vincula el PR al Issue correspondiente en GitHub Projects.
+
+4. **Revisión de pares (Code Review):**
+   - Todo PR hacia `dev` requiere la revisión y **aprobación de al menos un integrante del equipo** (Javier, Sebastián o Carlos).
+   - Una vez aprobado, se realiza el merge a `dev` y se elimina la rama temporal.
+
+5. **Pase a producción / entrega final (`dev` ➔ `main`):**
+   - Al finalizar el sprint o hito de entrega, se abre un PR de **`dev` hacia `main`**.
+   - Tras la validación final del equipo, se fusiona en `main`.
+
+
 ---
 ### Sección de innovación (documento de cierre)
 - **¿Qué problema resuelve?** La gestión dispersa de la información de salud de una mascota y la

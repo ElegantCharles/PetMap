@@ -111,40 +111,42 @@ docker compose down
 
 
 
-### Aplicación cliente (Web y Móvil)
-El cliente fue desarrollado con React Native y Expo. Para facilitar la revisión sin requerir instalaciones en teléfonos personales, **la vía principal de visualización es a través del navegador web**. La ejecución en dispositivo móvil físico mediante Expo Go queda disponible como alternativa opcional.
+### Aplicación móvil
+El cliente fue desarrollado con React Native y Expo. La forma recomendada de evaluación es en un **dispositivo móvil físico mediante código QR**, ya que permite apreciar la experiencia nativa de la aplicación. De forma alternativa y cómoda para revisión rápida, se incluye la opción de ejecutarla directamente en el **navegador web** de la computadora.
 
-#### 1. Visualización Principal: Navegador Web
-Permite interactuar con la interfaz y probar el flujo de navegación de inmediato en el navegador del computador:
+#### 1. Visualización Recomendada: Dispositivo Móvil Físico (Expo Go con QR)
+Permite validar el comportamiento nativo, gestos táctiles y transiciones fluidas en un teléfono real:
 
-```bash
-# 1. Ingresar a la carpeta de la aplicación
-cd mobile
+1. **Instalar la aplicación Expo Go** en el celular (Google Play Store en Android o App Store en iOS).
+2. **Conectar el teléfono a la misma red Wi-Fi** que la computadora.
+3. **Iniciar el servidor de desarrollo:**
+   ```bash
+   cd mobile
+   npm install   # Solo la primera vez tras clonar
+   npm start
+   ```
+4. **Escanear el código QR generado en la terminal:**
+   - **Android:** Abrir **Expo Go** y presionar *"Scan QR code"*.
+   - **iOS:** Enfocar el código con la aplicación de la **Cámara** para abrir en Expo Go (en iOS puede ser necesario iniciar sesión con una cuenta de Expo).
 
-# 2. Instalar dependencias (solo la primera vez)
-npm install
-
-# 3. Iniciar en el navegador web
-npm run web
-```
-La aplicación se abrirá automáticamente en `http://localhost:8081` (o presionando la tecla `w` en la consola de Expo), permitiendo navegar entre las pantallas de **Acceso**, **Mascotas** y **Mapa**.
+Podrá interactuar y navegar entre las pantallas de **Acceso**, **Mis Mascotas** y **Mapa**.
 
 ---
 
-#### 2. Visualización Opcional: Dispositivo Móvil Físico (Expo Go)
-Para validar el comportamiento en un teléfono real con transiciones nativas:
+#### 2. Visualización Alternativa y Cómoda: Navegador Web
+Si no se dispone de un dispositivo móvil en el momento o se prefiere una revisión inmediata sin instalaciones adicionales en el teléfono:
 
-1. Instalar la aplicación **Expo Go** en el celular (Google Play Store en Android o App Store en iOS, en algunos casos quizas deba iniciar sesion).
-2. Conectar el teléfono a la **misma red Wi-Fi** que la computadora.
-3. Iniciar el servidor Metro:
-   ```bash
-   npm start
-   ```
-4. Escanear el código QR generado en la terminal:
-   - **Android:** Abrir **Expo Go** y pulsar *"Scan QR code"*.
-   - **iOS:** Enfocar el código con la app de la **Cámara**.
+```bash
+cd mobile
+npm run web
+```
+*(O presionando la tecla `w` en la consola donde ya se encuentre ejecutando `npm start`).*
+
+La aplicación se abrirá automáticamente en `http://localhost:8081` con soporte completo de navegación entre pantallas (si el puerto está ocupado, se le preguntará si desea usar otro; solo presione la tecla "Enter").
+
 
 > **Configuración de la API:** La URL del backend se encuentra centralizada en `mobile/src/config/api.ts` (`API_CONFIG.BASE_URL`).
+
 
 
 

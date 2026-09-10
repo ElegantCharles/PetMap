@@ -121,7 +121,7 @@ Permite validar el comportamiento nativo, gestos táctiles y transiciones fluida
 2. **Conectar el teléfono a la misma red Wi-Fi** que la computadora.
 3. **Iniciar el servidor de desarrollo:**
    ```bash
-   cd mobile
+   cd "FASE 2/Evidencias Proyecto/Evidencias de sistema/aplicacion/movil"
    npm install   # Solo la primera vez tras clonar
    npm start
    ```
@@ -137,7 +137,7 @@ Podrá interactuar y navegar entre las pantallas de **Acceso**, **Mis Mascotas**
 Si no se dispone de un dispositivo móvil en el momento o se prefiere una revisión inmediata sin instalaciones adicionales en el teléfono:
 
 ```bash
-cd mobile
+cd "FASE 2/Evidencias Proyecto/Evidencias de sistema/aplicacion/movil"
 npm run web
 ```
 *(O presionando la tecla `w` en la consola donde ya se encuentre ejecutando `npm start`).*
@@ -145,7 +145,8 @@ npm run web
 La aplicación se abrirá automáticamente en `http://localhost:8081` con soporte completo de navegación entre pantallas (si el puerto está ocupado, se le preguntará si desea usar otro; solo presione la tecla "Enter").
 
 
-> **Configuración de la API:** La URL del backend se encuentra centralizada en `mobile/src/config/api.ts` (`API_CONFIG.BASE_URL`).
+> **Configuración de la API:** La URL del backend se encuentra centralizada en `src/config/api.ts` (`API_CONFIG.BASE_URL`).
+
 
 
 

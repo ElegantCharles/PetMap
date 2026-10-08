@@ -33,6 +33,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-meinpets_db}
       POSTGRES_USER: ${POSTGRES_USER:-meinpets_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-meinpets_password}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
     ports:
       - "${PORT:-3000}:3000"
     depends_on:

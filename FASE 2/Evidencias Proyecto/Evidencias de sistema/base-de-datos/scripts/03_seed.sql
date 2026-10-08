@@ -1,3 +1,5 @@
+SET client_encoding = 'UTF8';
+
 INSERT INTO especies (nombre)
 VALUES ('Perro'), ('Gato')
 ON CONFLICT (nombre) DO NOTHING;
@@ -39,32 +41,34 @@ CROSS JOIN especies e
 WHERE e.nombre = 'Gato'
 ON CONFLICT (especie_id, nombre) DO NOTHING;
 
-INSERT INTO catalogo_tratamientos (especie_id, tipo, nombre, dias_sugeridos_refuerzo, es_obligatoria)
-SELECT e.id, t.tipo, t.nombre, t.dias_sugeridos_refuerzo, t.es_obligatoria
+INSERT INTO catalogo_tratamientos (especie_id, tipo, nombre, descripcion, dias_sugeridos_refuerzo, es_obligatoria)
+SELECT e.id, t.tipo, t.nombre, t.descripcion, t.dias_sugeridos_refuerzo, t.es_obligatoria
 FROM (VALUES
-    ('vacuna', 'Puppy DP (Distemper y Parvovirus)', 21, true),
-    ('vacuna', 'Séxtuple Canina', 21, true),
-    ('vacuna', 'Antirrábica Canina', 365, true),
-    ('vacuna', 'KC (Tos de las Perreras)', 365, false),
-    ('antiparasitario_interno', 'Antiparasitario Interno Canino', 90, true),
-    ('antiparasitario_externo', 'Antiparasitario Externo Canino', 30, true)
-) AS t(tipo, nombre, dias_sugeridos_refuerzo, es_obligatoria)
+    ('vacuna', 'Puppy DP (Distemper y Parvovirus)', 'Distemper y parvovirus', 21, true),
+    ('vacuna', 'Séxtuple Canina', 'Protección múltiple', 21, true),
+    ('vacuna', 'Antirrábica Canina', 'Rabia', 365, true),
+    ('vacuna', 'KC (Tos de las Perreras)', 'Tos de las perreras', 365, false),
+    ('antiparasitario_interno', 'Antiparasitario Interno Canino', 'Gusanos intestinales', 90, true),
+    ('antiparasitario_externo', 'Antiparasitario Externo Canino', 'Pulgas y garrapatas', 30, true)
+) AS t(tipo, nombre, descripcion, dias_sugeridos_refuerzo, es_obligatoria)
 CROSS JOIN especies e
 WHERE e.nombre = 'Perro'
-ON CONFLICT (especie_id, nombre, tipo) DO NOTHING;
+ON CONFLICT (especie_id, nombre, tipo) DO UPDATE
+SET descripcion = EXCLUDED.descripcion;
 
-INSERT INTO catalogo_tratamientos (especie_id, tipo, nombre, dias_sugeridos_refuerzo, es_obligatoria)
-SELECT e.id, t.tipo, t.nombre, t.dias_sugeridos_refuerzo, t.es_obligatoria
+INSERT INTO catalogo_tratamientos (especie_id, tipo, nombre, descripcion, dias_sugeridos_refuerzo, es_obligatoria)
+SELECT e.id, t.tipo, t.nombre, t.descripcion, t.dias_sugeridos_refuerzo, t.es_obligatoria
 FROM (VALUES
-    ('vacuna', 'Triple Felina', 21, true),
-    ('vacuna', 'Leucemia Felina (FeLV)', 21, false),
-    ('vacuna', 'Antirrábica Felina', 365, true),
-    ('antiparasitario_interno', 'Antiparasitario Interno Felino', 90, true),
-    ('antiparasitario_externo', 'Antiparasitario Externo Felino', 30, true)
-) AS t(tipo, nombre, dias_sugeridos_refuerzo, es_obligatoria)
+    ('vacuna', 'Triple Felina', 'Panleucopenia, calicivirus y rinotraqueítis', 21, true),
+    ('vacuna', 'Leucemia Felina (FeLV)', 'Virus de leucemia felina', 21, false),
+    ('vacuna', 'Antirrábica Felina', 'Rabia', 365, true),
+    ('antiparasitario_interno', 'Antiparasitario Interno Felino', 'Gusanos intestinales', 90, true),
+    ('antiparasitario_externo', 'Antiparasitario Externo Felino', 'Pulgas y ácaros', 30, true)
+) AS t(tipo, nombre, descripcion, dias_sugeridos_refuerzo, es_obligatoria)
 CROSS JOIN especies e
 WHERE e.nombre = 'Gato'
-ON CONFLICT (especie_id, nombre, tipo) DO NOTHING;
+ON CONFLICT (especie_id, nombre, tipo) DO UPDATE
+SET descripcion = EXCLUDED.descripcion;
 
 INSERT INTO establecimientos (nombre, categoria, direccion, telefono, horario_atencion, ubicacion, contacto_email)
 SELECT 'Clínica Veterinaria Central', 'veterinaria', 'Av. Santa Isabel 450, Santiago', '+56 2 2222 1111', '09:00 - 20:00', ST_SetSRID(ST_MakePoint(-70.6482, -33.4513), 4326), 'contacto@vetcentral.cl'

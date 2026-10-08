@@ -1,3 +1,5 @@
+SET client_encoding = 'UTF8';
+
 CREATE TABLE IF NOT EXISTS usuarios (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -48,6 +50,7 @@ CREATE TABLE IF NOT EXISTS catalogo_tratamientos (
     especie_id INTEGER NOT NULL REFERENCES especies(id) ON DELETE CASCADE,
     tipo VARCHAR(30) NOT NULL CHECK (tipo IN ('vacuna', 'antiparasitario_interno', 'antiparasitario_externo')),
     nombre VARCHAR(100) NOT NULL,
+    descripcion VARCHAR(255),
     dias_sugeridos_refuerzo INTEGER,
     es_obligatoria BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

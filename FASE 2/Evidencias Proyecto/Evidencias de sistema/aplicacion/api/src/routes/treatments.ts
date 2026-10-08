@@ -114,6 +114,7 @@ router.get('/treatments', async (req: Request, res: Response) => {
           especie_id,
           tipo,
           nombre,
+          descripcion,
           dias_sugeridos_refuerzo,
           es_obligatoria
         FROM catalogo_tratamientos
@@ -131,6 +132,7 @@ router.get('/treatments', async (req: Request, res: Response) => {
         especie_id,
         tipo,
         nombre,
+        descripcion,
         dias_sugeridos_refuerzo,
         es_obligatoria
       FROM catalogo_tratamientos

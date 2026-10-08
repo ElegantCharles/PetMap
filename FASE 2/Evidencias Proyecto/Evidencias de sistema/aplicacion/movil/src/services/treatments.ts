@@ -66,12 +66,18 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
+export function normalizeCategory(raw: string): TreatmentCategory {
+  if (raw === 'vacuna') return 'vacuna';
+  if (raw.endsWith('interno') || raw.endsWith('interna')) return 'desparasitacion_interna';
+  return 'desparasitacion_externa';
+}
+
 function mapCatalogRow(row: Record<string, unknown>): TreatmentCatalogItem {
   return {
     id: Number(row.id),
     especie_id: Number(row.especie_id),
     especie_nombre: String(row.especie_nombre || ''),
-    categoria: (row.categoria || row.tipo || 'vacuna') as TreatmentCategory,
+    categoria: normalizeCategory(String(row.categoria || row.tipo || 'vacuna')),
     nombre: String(row.nombre || ''),
     intervalo_refuerzo_dias:
       typeof row.intervalo_refuerzo_dias === 'number'
@@ -80,10 +86,8 @@ function mapCatalogRow(row: Record<string, unknown>): TreatmentCatalogItem {
         ? row.dias_sugeridos_refuerzo
         : null,
     descripcion:
-      typeof row.descripcion === 'string'
-        ? row.descripcion
-        : row.es_obligatoria === true
-        ? 'Vacuna obligatoria recomendada'
+      typeof row.descripcion === 'string' && row.descripcion.trim().length > 0
+        ? row.descripcion.trim()
         : null,
   };
 }
@@ -94,9 +98,9 @@ function mapRecordRow(row: Record<string, unknown>): PetTreatmentRecord {
     mascota_id: Number(row.mascota_id),
     tratamiento_id: Number(row.tratamiento_id),
     tratamiento_nombre: String(row.tratamiento_nombre || ''),
-    tratamiento_categoria: (row.tratamiento_categoria ||
-      row.tratamiento_tipo ||
-      'vacuna') as TreatmentCategory,
+    tratamiento_categoria: normalizeCategory(
+      String(row.tratamiento_categoria || row.tratamiento_tipo || 'vacuna')
+    ),
     intervalo_refuerzo_dias:
       typeof row.intervalo_refuerzo_dias === 'number'
         ? row.intervalo_refuerzo_dias
@@ -278,9 +282,9 @@ export async function fetchCalendar(): Promise<CalendarEventItem[]> {
       especie_nombre: String(row.especie_nombre || ''),
       tratamiento_id: Number(row.tratamiento_id),
       tratamiento_nombre: String(row.tratamiento_nombre || ''),
-      tratamiento_categoria: (row.tratamiento_categoria ||
-        row.tratamiento_tipo ||
-        'vacuna') as TreatmentCategory,
+      tratamiento_categoria: normalizeCategory(
+        String(row.tratamiento_categoria || row.tratamiento_tipo || 'vacuna')
+      ),
       fecha_aplicacion: String(row.fecha_aplicacion || ''),
       fecha_proximo_refuerzo: String(row.fecha_proximo_refuerzo || ''),
       veterinaria_nombre:

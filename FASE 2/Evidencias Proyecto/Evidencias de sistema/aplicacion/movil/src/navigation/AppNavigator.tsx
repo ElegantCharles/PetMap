@@ -9,65 +9,29 @@ import PetDetailScreen from '../screens/PetDetailScreen';
 import TreatmentFormScreen from '../screens/TreatmentFormScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import MapScreen from '../screens/MapScreen';
-import { colors, fonts } from '../theme';
+import { colors } from '../theme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// Todas las pantallas dibujan su propia barra superior (TopBar) o cabecera,
+// así que la cabecera nativa va oculta en el stack completo.
 export default function AppNavigator() {
   return (
     <Stack.Navigator
       initialRouteName="Login"
       screenOptions={{
-        headerStyle: { backgroundColor: colors.ground },
-        headerTintColor: colors.ink,
-        headerTitleStyle: { fontFamily: fonts.display, fontSize: 18 },
-        headerShadowVisible: false,
+        headerShown: false,
         contentStyle: { backgroundColor: colors.ground },
       }}
     >
-      <Stack.Screen
-        name="Login"
-        component={LoginScreen}
-        options={{ title: 'Iniciar sesión' }}
-      />
-      <Stack.Screen
-        name="Register"
-        component={RegisterScreen}
-        options={{ title: 'Crear cuenta' }}
-      />
-      <Stack.Screen
-        name="Pets"
-        component={PetsScreen}
-        options={{ title: 'Mis mascotas' }}
-      />
-      <Stack.Screen
-        name="PetForm"
-        component={PetFormScreen}
-        options={({ route }) => ({
-          title: route.params?.petId ? 'Editar mascota' : 'Registrar mascota',
-        })}
-      />
-      <Stack.Screen
-        name="PetDetail"
-        component={PetDetailScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="TreatmentForm"
-        component={TreatmentFormScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Calendar"
-        component={CalendarScreen}
-        options={{ title: 'Calendario de refuerzos' }}
-      />
-      <Stack.Screen
-        name="Map"
-        component={MapScreen}
-        options={{ title: 'Mapa' }}
-      />
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="Pets" component={PetsScreen} />
+      <Stack.Screen name="PetForm" component={PetFormScreen} />
+      <Stack.Screen name="PetDetail" component={PetDetailScreen} />
+      <Stack.Screen name="TreatmentForm" component={TreatmentFormScreen} />
+      <Stack.Screen name="Calendar" component={CalendarScreen} />
+      <Stack.Screen name="Map" component={MapScreen} />
     </Stack.Navigator>
   );
 }
-

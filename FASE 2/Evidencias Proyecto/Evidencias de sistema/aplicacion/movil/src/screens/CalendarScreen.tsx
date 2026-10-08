@@ -1,22 +1,42 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
-  ActivityIndicator,
-  ScrollView,
-} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import type { CalendarScreenProps } from '../navigation/types';
+import { CalendarEventItem, fetchCalendar } from '../services/treatments';
 import {
-  CalendarEventItem,
-  fetchCalendar,
-  formatCategoryLabel,
-} from '../services/treatments';
+  CategoryIcon,
+  ErrorBox,
+  IconCalendar,
+  StatusPill,
+  TextButton,
+  TopBar,
+} from '../components';
+import {
+  StatusKey,
+  colors,
+  fonts,
+  formatDateLong,
+  radii,
+  status as statusColors,
+  type as t,
+} from '../theme';
+
+type Filter = 'all' | 'vencido' | 'proximo' | 'al_dia';
+
+function toKey(estado: string): StatusKey {
+  return estado === 'vencido' || estado === 'proximo' || estado === 'al_dia' ? estado : 'sin_fecha';
+}
+
+function eventLabel(ev: CalendarEventItem): string {
+  const key = toKey(ev.estado);
+  if (key === 'vencido') return `Vencido hace ${Math.abs(ev.dias_restantes)} d`;
+  if (key === 'proximo') return ev.dias_restantes === 0 ? 'Vence hoy' : `En ${ev.dias_restantes} d`;
+  return 'Al día';
+}
 
 export default function CalendarScreen({ navigation }: CalendarScreenProps) {
   const [events, setEvents] = useState<CalendarEventItem[]>([]);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'vencido' | 'proximo' | 'al_dia'>('all');
+  const [statusFilter, setStatusFilter] = useState<Filter>('all');
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -28,7 +48,7 @@ export default function CalendarScreen({ navigation }: CalendarScreenProps) {
       setEvents(list);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'Error al cargar calendario de refuerzos'
+        error instanceof Error ? error.message : 'No se pudo cargar el calendario. Intenta de nuevo.'
       );
     } finally {
       setLoading(false);
@@ -48,500 +68,189 @@ export default function CalendarScreen({ navigation }: CalendarScreenProps) {
   const countAlDia = events.filter((e) => e.estado === 'al_dia').length;
 
   const filteredEvents =
-    statusFilter === 'all'
-      ? events
-      : events.filter((e) => e.estado === statusFilter);
+    statusFilter === 'all' ? events : events.filter((e) => e.estado === statusFilter);
 
-  const renderStatusLabel = (item: CalendarEventItem) => {
-    if (item.estado === 'vencido') {
-      return `Vencido (${Math.abs(item.dias_restantes)} d)`;
+  const goBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Pets');
     }
-    if (item.estado === 'proximo') {
-      return item.dias_restantes === 0
-        ? 'Vence hoy'
-        : `Próximo (${item.dias_restantes} d)`;
-    }
-    return `Al día (${item.dias_restantes} d)`;
   };
 
+  const summary: { key: Exclude<Filter, 'all'>; label: string; count: number }[] = [
+    { key: 'vencido', label: 'Vencidos', count: countVencidos },
+    { key: 'proximo', label: 'Próximos', count: countProximos },
+    { key: 'al_dia', label: 'Al día', count: countAlDia },
+  ];
+
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Calendario de refuerzos</Text>
-        <Text style={styles.subtitle}>
-          Próximas vacunas y desparasitaciones de todas tus mascotas ordenadas por urgencia.
-        </Text>
+    <View style={styles.screen}>
+      <StatusBar style="dark" />
+      <View style={styles.column}>
+        <TopBar title="Calendario de refuerzos" onBack={goBack} />
 
-        <View style={styles.summaryRow}>
-          <TouchableOpacity
-            style={[
-              styles.summaryBox,
-              styles.summaryVencido,
-              statusFilter === 'vencido' && styles.summaryActiveBorder,
-            ]}
-            onPress={() =>
-              setStatusFilter(statusFilter === 'vencido' ? 'all' : 'vencido')
-            }
-          >
-            <Text style={styles.summaryCountVencido}>{countVencidos}</Text>
-            <Text style={styles.summaryLabelVencido}>Vencidos</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.summaryBox,
-              styles.summaryProximo,
-              statusFilter === 'proximo' && styles.summaryActiveBorder,
-            ]}
-            onPress={() =>
-              setStatusFilter(statusFilter === 'proximo' ? 'all' : 'proximo')
-            }
-          >
-            <Text style={styles.summaryCountProximo}>{countProximos}</Text>
-            <Text style={styles.summaryLabelProximo}>Próximos ≤30d</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.summaryBox,
-              styles.summaryAlDia,
-              statusFilter === 'al_dia' && styles.summaryActiveBorder,
-            ]}
-            onPress={() =>
-              setStatusFilter(statusFilter === 'al_dia' ? 'all' : 'al_dia')
-            }
-          >
-            <Text style={styles.summaryCountAlDia}>{countAlDia}</Text>
-            <Text style={styles.summaryLabelAlDia}>Al día</Text>
-          </TouchableOpacity>
-        </View>
-
-        {statusFilter !== 'all' ? (
-          <TouchableOpacity
-            style={styles.clearFilterBtn}
-            onPress={() => setStatusFilter('all')}
-          >
-            <Text style={styles.clearFilterText}>Mostrar todos ({events.length})</Text>
-          </TouchableOpacity>
-        ) : null}
-
-        {errorMessage ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{errorMessage}</Text>
-          </View>
-        ) : null}
-
-        {loading ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color="#0E5A60" />
-            <Text style={styles.loadingText}>Consultando calendario sanitario...</Text>
-          </View>
-        ) : filteredEvents.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyTitle}>
-              {events.length === 0
-                ? 'Sin refuerzos programados'
-                : 'No hay registros con este estado'}
-            </Text>
-            <Text style={styles.emptyText}>
-              {events.length === 0
-                ? 'Cuando registres una vacuna o desparasitación en la ficha de una mascota, su próximo refuerzo aparecerá aquí.'
-                : 'Cambia el filtro superior para ver el resto de tus recordatorios.'}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.eventList}>
-            {filteredEvents.map((ev) => (
-              <View key={ev.id} style={styles.eventCard}>
-                <View style={styles.eventTopRow}>
-                  <View style={styles.badgesGroup}>
-                    <View
-                      style={[
-                        styles.catBadge,
-                        ev.tratamiento_categoria === 'vacuna'
-                          ? styles.catVacuna
-                          : ev.tratamiento_categoria === 'desparasitacion_interna'
-                          ? styles.catInterna
-                          : styles.catExterna,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.catBadgeText,
-                          ev.tratamiento_categoria === 'vacuna'
-                            ? styles.catVacunaText
-                            : ev.tratamiento_categoria === 'desparasitacion_interna'
-                            ? styles.catInternaText
-                            : styles.catExternaText,
-                        ]}
-                      >
-                        {formatCategoryLabel(ev.tratamiento_categoria)}
-                      </Text>
-                    </View>
-
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        ev.estado === 'vencido'
-                          ? styles.statusVencido
-                          : ev.estado === 'proximo'
-                          ? styles.statusProximo
-                          : styles.statusAlDia,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.statusBadgeText,
-                          ev.estado === 'vencido'
-                            ? styles.statusVencidoText
-                            : ev.estado === 'proximo'
-                            ? styles.statusProximoText
-                            : styles.statusAlDiaText,
-                        ]}
-                      >
-                        {renderStatusLabel(ev)}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.petChip}>
-                    {ev.mascota_nombre} ({ev.especie_nombre})
-                  </Text>
-                </View>
-
-                <Text style={styles.treatmentTitle}>{ev.tratamiento_nombre}</Text>
-
-                <View style={styles.datesRow}>
-                  <View style={styles.dateCol}>
-                    <Text style={styles.dateLabel}>Próximo refuerzo</Text>
-                    <Text style={styles.datePrimary}>{ev.fecha_proximo_refuerzo}</Text>
-                  </View>
-                  <View style={styles.dateCol}>
-                    <Text style={styles.dateLabel}>Última aplicación</Text>
-                    <Text style={styles.dateSecondary}>{ev.fecha_aplicacion}</Text>
-                  </View>
-                </View>
-
-                {ev.veterinaria_nombre ? (
-                  <Text style={styles.vetText}>Clínica: {ev.veterinaria_nombre}</Text>
-                ) : null}
-
-                <View style={styles.cardActions}>
-                  <TouchableOpacity
-                    style={styles.openPetBtn}
-                    onPress={() =>
-                      navigation.navigate('PetDetail', { petId: ev.mascota_id })
-                    }
-                  >
-                    <Text style={styles.openPetBtnText}>
-                      Ver carnet de {ev.mascota_nombre}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.navigate('Pets')}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.backButtonText}>Volver a Mis mascotas</Text>
-        </TouchableOpacity>
+          {errorMessage ? <ErrorBox message={errorMessage} /> : null}
+
+          {/* Resumen que también filtra */}
+          <View style={styles.summaryRow}>
+            {summary.map((s) => {
+              const c = statusColors[s.key];
+              const active = statusFilter === s.key;
+              return (
+                <Pressable
+                  key={s.key}
+                  onPress={() => setStatusFilter(active ? 'all' : s.key)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${s.label}: ${s.count}. ${active ? 'Quitar filtro' : 'Filtrar'}`}
+                  accessibilityState={{ selected: active }}
+                  style={({ pressed }) => [
+                    styles.summaryTile,
+                    { backgroundColor: c.bg, borderColor: active ? colors.ink : 'transparent' },
+                    pressed && { opacity: 0.85 },
+                  ]}
+                >
+                  <Text style={{ fontFamily: fonts.display, fontSize: 30, lineHeight: 34, color: c.fg }}>
+                    {s.count}
+                  </Text>
+                  <Text style={{ fontFamily: fonts.textSemi, fontSize: 13, color: c.fg }}>{s.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {statusFilter !== 'all' ? (
+            <TextButton
+              label={`Mostrar todos (${events.length})`}
+              onPress={() => setStatusFilter('all')}
+              style={{ alignSelf: 'flex-start', marginLeft: -8, marginTop: -8 }}
+            />
+          ) : null}
+
+          {loading && events.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <ActivityIndicator size="large" color={colors.teal} />
+              <Text style={[t.body, { color: colors.inkSoft, marginTop: 12 }]}>Cargando calendario…</Text>
+            </View>
+          ) : filteredEvents.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <View style={styles.emptyIcon}>
+                <IconCalendar size={26} color={colors.teal} />
+              </View>
+              <Text style={[t.cardTitle, { color: colors.ink, textAlign: 'center' }]}>
+                {events.length === 0 ? 'Sin refuerzos programados' : 'Nada con este estado'}
+              </Text>
+              <Text style={[t.small, { color: colors.inkSoft, textAlign: 'center' }]}>
+                {events.length === 0
+                  ? 'Cuando registres una dosis en la ficha de una mascota, su próximo refuerzo aparecerá aquí.'
+                  : 'Quita el filtro para ver el resto de tus recordatorios.'}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.listCard}>
+              {filteredEvents.map((ev, index) => {
+                const key = toKey(ev.estado);
+                const label = eventLabel(ev);
+                return (
+                  <Pressable
+                    key={ev.id}
+                    onPress={() => navigation.navigate('PetDetail', { petId: ev.mascota_id })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${ev.tratamiento_nombre} de ${ev.mascota_nombre}, refuerzo ${formatDateLong(ev.fecha_proximo_refuerzo)}, ${label}. Ver ficha`}
+                    style={({ pressed }) => [
+                      styles.eventRow,
+                      index > 0 && styles.eventDivider,
+                      pressed && { backgroundColor: colors.mintSelected },
+                    ]}
+                  >
+                    <CategoryIcon categoria={ev.tratamiento_categoria} size={40} />
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text numberOfLines={1} style={[t.rowTitle, { color: colors.ink }]}>
+                        {ev.tratamiento_nombre}
+                      </Text>
+                      <Text numberOfLines={1} style={[t.small, { color: colors.inkSoft }]}>
+                        {ev.mascota_nombre} · {formatDateLong(ev.fecha_proximo_refuerzo)}
+                      </Text>
+                    </View>
+                    <StatusPill status={key} label={label} />
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+        </ScrollView>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flexGrow: 1,
-    backgroundColor: '#F6F3EC',
-    alignItems: 'center',
-    padding: 20,
+  screen: {
+    flex: 1,
+    backgroundColor: colors.ground,
   },
-  card: {
+  column: {
+    flex: 1,
     width: '100%',
     maxWidth: 480,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
-    padding: 24,
+    alignSelf: 'center',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#14282A',
-    letterSpacing: -0.3,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#526466',
-    marginBottom: 18,
-    lineHeight: 19,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 40,
+    gap: 16,
   },
   summaryRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 14,
   },
-  summaryBox: {
+  summaryTile: {
     flex: 1,
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    alignItems: 'center',
+    minHeight: 76,
+    borderRadius: radii.tile,
     borderWidth: 2,
-    borderColor: 'transparent',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+    gap: 2,
   },
-  summaryActiveBorder: {
-    borderColor: '#0E5A60',
+  listCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.row,
+    paddingVertical: 4,
+    paddingHorizontal: 16,
   },
-  summaryVencido: {
-    backgroundColor: '#FDE8E8',
-  },
-  summaryProximo: {
-    backgroundColor: '#FEF3C7',
-  },
-  summaryAlDia: {
-    backgroundColor: '#DCFCE7',
-  },
-  summaryCountVencido: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#A61B1B',
-  },
-  summaryLabelVencido: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#881313',
-    marginTop: 2,
-  },
-  summaryCountProximo: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#9A4A06',
-  },
-  summaryLabelProximo: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#7A3A04',
-    marginTop: 2,
-  },
-  summaryCountAlDia: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#14532D',
-  },
-  summaryLabelAlDia: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#14532D',
-    marginTop: 2,
-  },
-  clearFilterBtn: {
-    alignSelf: 'center',
-    marginBottom: 12,
-  },
-  clearFilterText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0E5A60',
-  },
-  errorBox: {
-    backgroundColor: '#FDF2F2',
-    borderWidth: 1,
-    borderColor: '#F5C2C0',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: '#A61B1B',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  loadingBox: {
-    paddingVertical: 32,
+  eventRow: {
+    minHeight: 68,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
   },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 13,
-    color: '#526466',
+  eventDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.divider,
   },
   emptyBox: {
-    backgroundColor: '#FAF8F4',
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 18,
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    padding: 24,
     alignItems: 'center',
+    gap: 8,
   },
-  emptyTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#14282A',
-    marginBottom: 6,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: '#526466',
-    textAlign: 'center',
-    lineHeight: 19,
-  },
-  eventList: {
-    gap: 12,
-    marginBottom: 18,
-  },
-  eventCard: {
-    backgroundColor: '#FAF8F4',
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
-    borderRadius: 12,
-    padding: 14,
-  },
-  eventTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  emptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: colors.mint,
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 6,
-  },
-  badgesGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  catBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  catVacuna: {
-    backgroundColor: '#E4F0F1',
-  },
-  catInterna: {
-    backgroundColor: '#F3E7D3',
-  },
-  catExterna: {
-    backgroundColor: '#E8F3E8',
-  },
-  catBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  catVacunaText: {
-    color: '#0E5A60',
-  },
-  catInternaText: {
-    color: '#7A541E',
-  },
-  catExternaText: {
-    color: '#1E5E3A',
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  statusVencido: {
-    backgroundColor: '#FDE8E8',
-  },
-  statusProximo: {
-    backgroundColor: '#FEF3C7',
-  },
-  statusAlDia: {
-    backgroundColor: '#DCFCE7',
-  },
-  statusBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  statusVencidoText: {
-    color: '#A61B1B',
-  },
-  statusProximoText: {
-    color: '#9A4A06',
-  },
-  statusAlDiaText: {
-    color: '#14532D',
-  },
-  petChip: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#2A3F41',
-  },
-  treatmentTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#14282A',
-    marginBottom: 8,
-  },
-  datesRow: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
-    padding: 10,
-    marginBottom: 8,
-  },
-  dateCol: {
-    flex: 1,
-  },
-  dateLabel: {
-    fontSize: 11,
-    color: '#526466',
-  },
-  datePrimary: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#14282A',
-    marginTop: 2,
-  },
-  dateSecondary: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#2A3F41',
-    marginTop: 2,
-  },
-  vetText: {
-    fontSize: 12,
-    color: '#526466',
-    marginBottom: 8,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  openPetBtn: {
-    backgroundColor: '#E4F0F1',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-  },
-  openPetBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0E5A60',
-  },
-  backButton: {
-    width: '100%',
-    backgroundColor: '#FAF8F4',
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
-    paddingVertical: 13,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  backButtonText: {
-    color: '#526466',
-    fontSize: 14,
-    fontWeight: '600',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
 });

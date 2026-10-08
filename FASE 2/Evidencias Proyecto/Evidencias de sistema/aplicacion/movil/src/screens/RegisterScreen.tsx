@@ -1,21 +1,16 @@
 import React, { useState } from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { RegisterScreenProps } from '../navigation/types';
 import { registerRequest, loginRequest } from '../services/auth';
+import { ErrorBox, PrimaryButton, TextButton, TextField, TopBar } from '../components';
+import { colors } from '../theme';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function RegisterScreen({ navigation }: RegisterScreenProps) {
+  const insets = useSafeAreaInsets();
   const [nombreCompleto, setNombreCompleto] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,17 +30,17 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
     }
 
     if (!EMAIL_REGEX.test(trimmedEmail)) {
-      setErrorMessage('Ingresa un correo electrónico con formato válido.');
+      setErrorMessage('El correo no parece válido. Revisa que tenga @ y un dominio.');
       return;
     }
 
     if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
-      setErrorMessage('La contraseña debe tener al menos 8 caracteres e incluir letras y números.');
+      setErrorMessage('La contraseña necesita al menos 8 caracteres, con letras y números.');
       return;
     }
 
     if (password !== confirmPassword) {
-      setErrorMessage('Las contraseñas ingresadas no coinciden.');
+      setErrorMessage('Las contraseñas no coinciden. Escríbelas de nuevo.');
       return;
     }
 
@@ -56,205 +51,110 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
       navigation.replace('Pets');
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'Error de conexión con el servidor.'
+        error instanceof Error ? error.message : 'No se pudo crear la cuenta. Intenta de nuevo.'
       );
     } finally {
       setLoading(false);
     }
   };
 
+  const goBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Login');
+    }
+  };
+
   return (
     <KeyboardAvoidingView
-      style={styles.outer}
+      style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-        <View style={styles.card}>
-          <Text style={styles.title}>Crear cuenta</Text>
-          <Text style={styles.subtitle}>
-            Registra tu perfil de tutor para llevar el carnet y calendario sanitario de tus mascotas.
-          </Text>
+      <StatusBar style="dark" />
+      <View style={styles.column}>
+        <TopBar title="Crear cuenta" onBack={goBack} />
 
-          {errorMessage ? (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{errorMessage}</Text>
-            </View>
-          ) : null}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {errorMessage ? <ErrorBox message={errorMessage} /> : null}
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Nombre completo</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ej. Carlos Echeverría"
-              placeholderTextColor="#8B9899"
-              value={nombreCompleto}
-              onChangeText={setNombreCompleto}
-              editable={!loading}
-            />
-          </View>
+          <TextField
+            label="Nombre completo"
+            placeholder="Ej. Carlos Echeverría"
+            value={nombreCompleto}
+            onChangeText={setNombreCompleto}
+            editable={!loading}
+            autoCapitalize="words"
+          />
+          <TextField
+            label="Correo"
+            placeholder="correo@ejemplo.cl"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={email}
+            onChangeText={setEmail}
+            editable={!loading}
+          />
+          <TextField
+            label="Contraseña (8 o más, con letras y números)"
+            placeholder="Tu contraseña"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+            editable={!loading}
+          />
+          <TextField
+            label="Repite la contraseña"
+            placeholder="Tu contraseña otra vez"
+            secureTextEntry
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            editable={!loading}
+            returnKeyType="go"
+            onSubmitEditing={handleRegister}
+          />
+        </ScrollView>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Correo electrónico</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="correo@ejemplo.cl"
-              placeholderTextColor="#8B9899"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              value={email}
-              onChangeText={setEmail}
-              editable={!loading}
-            />
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Contraseña</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Mínimo 8 caracteres (letras y números)"
-              placeholderTextColor="#8B9899"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-              editable={!loading}
-            />
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Confirmar contraseña</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Repite tu contraseña"
-              placeholderTextColor="#8B9899"
-              secureTextEntry
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              editable={!loading}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.primaryButton, loading && styles.disabledButton]}
-            onPress={handleRegister}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.buttonText}>Registrarme e ingresar</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.linkButton}
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}>
+          <PrimaryButton label="Crear cuenta" onPress={handleRegister} loading={loading} />
+          <TextButton
+            label="¿Ya tienes cuenta? Inicia sesión"
             onPress={() => navigation.navigate('Login')}
             disabled={loading}
-          >
-            <Text style={styles.linkText}>
-              ¿Ya tienes una cuenta? <Text style={styles.linkHighlight}>Inicia sesión</Text>
-            </Text>
-          </TouchableOpacity>
+            style={{ alignSelf: 'center' }}
+          />
         </View>
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  outer: {
+  screen: {
     flex: 1,
-    backgroundColor: '#F6F3EC',
+    backgroundColor: colors.ground,
   },
-  scrollContainer: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  card: {
+  column: {
+    flex: 1,
     width: '100%',
-    maxWidth: 420,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
-    padding: 26,
+    maxWidth: 480,
+    alignSelf: 'center',
   },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#14282A',
-    letterSpacing: -0.3,
-    marginBottom: 6,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 24,
+    gap: 20,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#526466',
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  errorBox: {
-    backgroundColor: '#FDF2F2',
-    borderWidth: 1,
-    borderColor: '#F5C2C0',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: '#A61B1B',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  fieldGroup: {
-    width: '100%',
-    marginBottom: 14,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#2A3F41',
-    marginBottom: 6,
-  },
-  input: {
-    width: '100%',
-    backgroundColor: '#FAF8F4',
-    borderWidth: 1,
-    borderColor: '#D8CFC0',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#14282A',
-  },
-  primaryButton: {
-    width: '100%',
-    backgroundColor: '#0E5A60',
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 6,
-    marginBottom: 14,
-  },
-  disabledButton: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  linkButton: {
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#526466',
-  },
-  linkHighlight: {
-    color: '#0E5A60',
-    fontWeight: '700',
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    gap: 4,
+    backgroundColor: colors.ground,
   },
 });

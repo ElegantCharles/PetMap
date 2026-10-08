@@ -347,14 +347,12 @@ export default function TreatmentFormScreen({ navigation, route }: TreatmentForm
                   onPress={() => handleQuickDate(q.ago)}
                 />
               ))}
-            </View>
-            {isPresetDate ? (
-              <TextButton
-                label={customDateOpen ? 'Usar un atajo' : 'Elegir otra fecha'}
-                onPress={() => setCustomDateOpen((v) => !v)}
-                style={{ alignSelf: 'flex-start', marginLeft: -8 }}
+              <Chip
+                label="Otra fecha"
+                selected={showCustomDate}
+                onPress={() => setCustomDateOpen(true)}
               />
-            ) : null}
+            </View>
             {showCustomDate ? (
               <TextField
                 label="Fecha de aplicación (AAAA-MM-DD)"

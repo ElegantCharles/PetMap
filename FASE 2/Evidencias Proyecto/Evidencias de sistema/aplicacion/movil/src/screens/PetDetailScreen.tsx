@@ -34,7 +34,6 @@ import {
   IconChevronRight,
   IconMore,
   IconPlus,
-  IconSyringe,
   PopoverMenu,
   PrimaryButton,
   StatusPill,
@@ -342,9 +341,7 @@ export default function PetDetailScreen({ navigation, route }: PetDetailScreenPr
             ) : (
               <View style={styles.floatCard}>
                 <View style={styles.emptyRow}>
-                  <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: colors.mint, alignItems: 'center', justifyContent: 'center' }}>
-                    <IconSyringe size={24} color={colors.teal} />
-                  </View>
+                  <CategoryIcon categoria="vacuna" size={44} />
                   <View style={{ flex: 1, gap: 2 }}>
                     <Text style={[t.cardTitle, { color: colors.ink }]}>
                       {hasDoses ? 'Sin refuerzos pendientes' : 'Sin dosis registradas'}

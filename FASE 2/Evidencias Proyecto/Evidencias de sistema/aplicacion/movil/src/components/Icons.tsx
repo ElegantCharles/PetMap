@@ -77,6 +77,23 @@ export const IconCalendar = (p: IconProps) => (
   </Base>
 );
 
+export const IconPaw = ({ size = 22, color = colors.ink }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+    <Circle cx="6" cy="10" r="2" />
+    <Circle cx="10" cy="5.5" r="2" />
+    <Circle cx="16" cy="5.5" r="2" />
+    <Circle cx="20" cy="10" r="2" />
+    <Path d="M12 11c-3 0-6 3.5-6 6 0 2 1.7 2.8 3.2 2.5 1-.2 1.8-.5 2.8-.5s1.8.3 2.8.5c1.5.3 3.2-.5 3.2-2.5 0-2.5-3-6-6-6z" />
+  </Svg>
+);
+
+export const IconMapPin = (p: IconProps) => (
+  <Base strokeWidth={1.9} {...p}>
+    <Path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" />
+    <Circle cx="12" cy="9.5" r="2.5" />
+  </Base>
+);
+
 // Jeringa: vacuna
 export const IconSyringe = (p: IconProps) => (
   <Base strokeWidth={1.8} {...p}>

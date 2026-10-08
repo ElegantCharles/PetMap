@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { PetFormScreenProps } from '../navigation/types';
 import {
   Species,
@@ -18,12 +19,37 @@ import {
   createPet,
   updatePet,
 } from '../services/pets';
+import {
+  BottomSheet,
+  Chip,
+  ErrorBox,
+  IconCheck,
+  IconPlus,
+  PrimaryButton,
+  SelectField,
+  TextButton,
+  TextField,
+  TopBar,
+} from '../components';
+import { colors, fonts, formatDateLong, parseIso, radii, toIso, type as t } from '../theme';
 
-const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const BIRTH_PRESETS: { label: string; years: number; months: number }[] = [
+  { label: 'Hace 3 meses', years: 0, months: 3 },
+  { label: 'Hace 1 año', years: 1, months: 0 },
+  { label: 'Hace 3 años', years: 3, months: 0 },
+];
+
+function presetIso(years: number, months: number): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - years);
+  d.setMonth(d.getMonth() - months);
+  return toIso(d);
+}
 
 export default function PetFormScreen({ navigation, route }: PetFormScreenProps) {
   const petId = route.params?.petId;
   const isEditing = typeof petId === 'number';
+  const insets = useSafeAreaInsets();
 
   const [catalog, setCatalog] = useState<Species[]>([]);
   const [nombre, setNombre] = useState('');
@@ -34,6 +60,10 @@ export default function PetFormScreen({ navigation, route }: PetFormScreenProps)
   const [esterilizado, setEsterilizado] = useState(false);
   const [numeroChip, setNumeroChip] = useState('');
   const [fotoUrl, setFotoUrl] = useState('');
+
+  const [breedSheetOpen, setBreedSheetOpen] = useState(false);
+  const [customBirthOpen, setCustomBirthOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -58,6 +88,9 @@ export default function PetFormScreen({ navigation, route }: PetFormScreenProps)
           setEsterilizado(Boolean(pet.esterilizado));
           setNumeroChip(pet.numero_chip || '');
           setFotoUrl(pet.foto_url || '');
+          if (pet.numero_chip) {
+            setMoreOpen(true);
+          }
         } else if (speciesData.length > 0) {
           const firstSpecies = speciesData[0];
           setEspecieId(firstSpecies.id);
@@ -68,7 +101,9 @@ export default function PetFormScreen({ navigation, route }: PetFormScreenProps)
       } catch (error) {
         if (mounted) {
           setErrorMessage(
-            error instanceof Error ? error.message : 'Error al cargar los datos del formulario'
+            error instanceof Error
+              ? error.message
+              : 'No se pudo cargar el formulario. Revisa tu conexión e intenta de nuevo.'
           );
         }
       } finally {
@@ -85,6 +120,7 @@ export default function PetFormScreen({ navigation, route }: PetFormScreenProps)
 
   const selectedSpecies = catalog.find((sp) => sp.id === especieId) || null;
   const availableBreeds = selectedSpecies ? selectedSpecies.razas : [];
+  const selectedBreed = availableBreeds.find((br) => br.id === razaId) || null;
 
   const handleSelectSpecies = (newSpeciesId: number) => {
     setEspecieId(newSpeciesId);
@@ -96,14 +132,9 @@ export default function PetFormScreen({ navigation, route }: PetFormScreenProps)
     }
   };
 
-  const applyQuickBirthDate = (yearsAgo: number, monthsAgo = 0) => {
-    const d = new Date();
-    d.setFullYear(d.getFullYear() - yearsAgo);
-    d.setMonth(d.getMonth() - monthsAgo);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    setFechaNacimiento(`${yyyy}-${mm}-${dd}`);
+  const handlePresetBirth = (years: number, months: number) => {
+    setCustomBirthOpen(false);
+    setFechaNacimiento(presetIso(years, months));
   };
 
   const handleSave = async () => {
@@ -113,17 +144,17 @@ export default function PetFormScreen({ navigation, route }: PetFormScreenProps)
     const trimmedDate = fechaNacimiento.trim();
 
     if (!trimmedNombre) {
-      setErrorMessage('Ingresa el nombre de tu mascota.');
+      setErrorMessage('Escribe el nombre de tu mascota.');
       return;
     }
 
     if (!especieId) {
-      setErrorMessage('Selecciona la especie de tu mascota.');
+      setErrorMessage('Elige si tu mascota es perro o gato.');
       return;
     }
 
-    if (!trimmedDate || !DATE_REGEX.test(trimmedDate)) {
-      setErrorMessage('Ingresa la fecha de nacimiento en formato AAAA-MM-DD (ej. 2023-05-14).');
+    if (!trimmedDate || !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
+      setErrorMessage('Escribe la fecha de nacimiento como AAAA-MM-DD, por ejemplo 2023-05-14.');
       return;
     }
 
@@ -137,12 +168,12 @@ export default function PetFormScreen({ navigation, route }: PetFormScreenProps)
       parsedDate.getUTCMonth() !== m - 1 ||
       parsedDate.getUTCDate() !== d
     ) {
-      setErrorMessage('La fecha de nacimiento ingresada no existe en el calendario.');
+      setErrorMessage('Esa fecha de nacimiento no existe en el calendario. Revísala.');
       return;
     }
 
     if (parsedDate.getTime() > todayUtc) {
-      setErrorMessage('La fecha de nacimiento no puede ser una fecha futura.');
+      setErrorMessage('La fecha de nacimiento no puede ser futura.');
       return;
     }
 
@@ -168,391 +199,287 @@ export default function PetFormScreen({ navigation, route }: PetFormScreenProps)
       }
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'No fue posible guardar la mascota.'
+        error instanceof Error ? error.message : 'No se pudo guardar la mascota. Intenta de nuevo.'
       );
     } finally {
       setSaving(false);
     }
   };
 
+  const goBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Pets');
+    }
+  };
+
+  /* ------------------------------------------------------------- derivados */
+
+  const isPresetBirth = BIRTH_PRESETS.some((p) => presetIso(p.years, p.months) === fechaNacimiento);
+  const hasOtherBirth = fechaNacimiento !== '' && !isPresetBirth;
+  const showCustomBirth = customBirthOpen || hasOtherBirth;
+  const birthValid = parseIso(fechaNacimiento) !== null;
+
+  /* --------------------------------------------------------------- estados */
+
   if (loadingInitial) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0E5A60" />
-        <Text style={styles.loadingText}>Cargando formulario...</Text>
+      <View style={styles.center}>
+        <StatusBar style="dark" />
+        <ActivityIndicator size="large" color={colors.teal} />
+        <Text style={[t.body, { color: colors.inkSoft, marginTop: 12 }]}>Cargando…</Text>
       </View>
     );
   }
 
+  /* ---------------------------------------------------------------- pantalla */
+
   return (
     <KeyboardAvoidingView
-      style={styles.outer}
+      style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-        <View style={styles.card}>
-          <Text style={styles.title}>
-            {isEditing ? 'Editar mascota' : 'Registrar mascota'}
-          </Text>
-          <Text style={styles.subtitle}>
-            Completa los datos básicos para llevar el control sanitario y calendario de tu mascota.
-          </Text>
+      <StatusBar style="dark" />
+      <View style={styles.column}>
+        <TopBar title={isEditing ? 'Editar mascota' : 'Registrar mascota'} onBack={goBack} />
 
-          {errorMessage ? (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{errorMessage}</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {errorMessage ? <ErrorBox message={errorMessage} /> : null}
+
+          <TextField
+            label="Nombre"
+            placeholder="Ej. Pelusa, Max, Luna"
+            value={nombre}
+            onChangeText={setNombre}
+            editable={!saving}
+            autoCapitalize="words"
+          />
+
+          {/* Especie */}
+          <View style={{ gap: 8 }}>
+            <Text style={[t.label, { color: colors.inkLabel }]}>¿Qué es?</Text>
+            <View style={styles.segment}>
+              {catalog.map((sp) => (
+                <View key={sp.id} style={{ flex: 1 }}>
+                  <Chip
+                    label={sp.nombre}
+                    height={52}
+                    selected={sp.id === especieId}
+                    onPress={() => handleSelectSpecies(sp.id)}
+                  />
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Raza */}
+          {availableBreeds.length > 0 ? (
+            <View style={{ gap: 8 }}>
+              <Text style={[t.label, { color: colors.inkLabel }]}>Raza</Text>
+              <SelectField
+                label="Raza"
+                title={selectedBreed ? selectedBreed.nombre : 'Elige una raza'}
+                onPress={() => setBreedSheetOpen(true)}
+              />
             </View>
           ) : null}
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Nombre de la mascota *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ej. Pelusa, Max, Luna"
-              placeholderTextColor="#8B9899"
-              value={nombre}
-              onChangeText={setNombre}
-              editable={!saving}
-            />
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Especie *</Text>
+          {/* Nacimiento */}
+          <View style={{ gap: 8 }}>
+            <Text style={[t.label, { color: colors.inkLabel }]}>¿Cuándo nació?</Text>
             <View style={styles.chipRow}>
-              {catalog.map((sp) => {
-                const active = sp.id === especieId;
-                return (
-                  <TouchableOpacity
-                    key={sp.id}
-                    style={[styles.choiceChip, active && styles.choiceChipActive]}
-                    onPress={() => handleSelectSpecies(sp.id)}
-                    disabled={saving}
-                  >
-                    <Text style={[styles.choiceChipText, active && styles.choiceChipTextActive]}>
-                      {sp.nombre}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+              {BIRTH_PRESETS.map((p) => (
+                <Chip
+                  key={p.label}
+                  label={p.label}
+                  selected={!showCustomBirth && presetIso(p.years, p.months) === fechaNacimiento}
+                  onPress={() => handlePresetBirth(p.years, p.months)}
+                />
+              ))}
+            </View>
+            {!hasOtherBirth ? (
+              <TextButton
+                label={customBirthOpen ? 'Usar un atajo' : 'Elegir otra fecha'}
+                onPress={() => setCustomBirthOpen((v) => !v)}
+                style={{ alignSelf: 'flex-start', marginLeft: -8 }}
+              />
+            ) : null}
+            {showCustomBirth ? (
+              <TextField
+                label="Fecha de nacimiento (AAAA-MM-DD)"
+                placeholder="2023-08-15"
+                value={fechaNacimiento}
+                onChangeText={setFechaNacimiento}
+                editable={!saving}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            ) : null}
+            {birthValid ? (
+              <Text style={[t.small, { color: colors.inkSoft }]}>
+                Nació el {formatDateLong(fechaNacimiento)}
+              </Text>
+            ) : null}
+          </View>
+
+          {/* Sexo */}
+          <View style={{ gap: 8 }}>
+            <Text style={[t.label, { color: colors.inkLabel }]}>Sexo</Text>
+            <View style={styles.segment}>
+              <View style={{ flex: 1 }}>
+                <Chip label="Macho" height={52} selected={sexo === 'macho'} onPress={() => setSexo('macho')} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Chip label="Hembra" height={52} selected={sexo === 'hembra'} onPress={() => setSexo('hembra')} />
+              </View>
             </View>
           </View>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Raza</Text>
-            <View style={styles.breedGrid}>
-              {availableBreeds.map((br) => {
-                const active = br.id === razaId;
-                return (
-                  <TouchableOpacity
-                    key={br.id}
-                    style={[styles.breedChip, active && styles.breedChipActive]}
-                    onPress={() => setRazaId(br.id)}
-                    disabled={saving}
-                  >
-                    <Text style={[styles.breedChipText, active && styles.breedChipTextActive]}>
-                      {br.nombre}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+          {/* Esterilización */}
+          <View style={{ gap: 8 }}>
+            <Text style={[t.label, { color: colors.inkLabel }]}>
+              {sexo === 'macho' ? '¿Está esterilizado?' : '¿Está esterilizada?'}
+            </Text>
+            <View style={styles.segment}>
+              <View style={{ flex: 1 }}>
+                <Chip label="Sí" height={52} selected={esterilizado} onPress={() => setEsterilizado(true)} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Chip label="No" height={52} selected={!esterilizado} onPress={() => setEsterilizado(false)} />
+              </View>
             </View>
           </View>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Fecha de nacimiento (AAAA-MM-DD) *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ej. 2023-08-15"
-              placeholderTextColor="#8B9899"
-              value={fechaNacimiento}
-              onChangeText={setFechaNacimiento}
-              editable={!saving}
-            />
-            <View style={styles.quickDatesRow}>
-              <TouchableOpacity
-                style={styles.quickDateBtn}
-                onPress={() => applyQuickBirthDate(0, 3)}
-                disabled={saving}
-              >
-                <Text style={styles.quickDateText}>Hace 3 meses</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickDateBtn}
-                onPress={() => applyQuickBirthDate(1, 0)}
-                disabled={saving}
-              >
-                <Text style={styles.quickDateText}>Hace 1 año</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickDateBtn}
-                onPress={() => applyQuickBirthDate(3, 0)}
-                disabled={saving}
-              >
-                <Text style={styles.quickDateText}>Hace 3 años</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Sexo *</Text>
-            <View style={styles.chipRow}>
-              <TouchableOpacity
-                style={[styles.choiceChip, sexo === 'macho' && styles.choiceChipActive]}
-                onPress={() => setSexo('macho')}
-                disabled={saving}
-              >
-                <Text style={[styles.choiceChipText, sexo === 'macho' && styles.choiceChipTextActive]}>
-                  Macho
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.choiceChip, sexo === 'hembra' && styles.choiceChipActive]}
-                onPress={() => setSexo('hembra')}
-                disabled={saving}
-              >
-                <Text style={[styles.choiceChipText, sexo === 'hembra' && styles.choiceChipTextActive]}>
-                  Hembra
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>¿Está esterilizado/a?</Text>
-            <View style={styles.chipRow}>
-              <TouchableOpacity
-                style={[styles.choiceChip, esterilizado && styles.choiceChipActive]}
-                onPress={() => setEsterilizado(true)}
-                disabled={saving}
-              >
-                <Text style={[styles.choiceChipText, esterilizado && styles.choiceChipTextActive]}>
-                  Sí, esterilizado/a
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.choiceChip, !esterilizado && styles.choiceChipActive]}
-                onPress={() => setEsterilizado(false)}
-                disabled={saving}
-              >
-                <Text style={[styles.choiceChipText, !esterilizado && styles.choiceChipTextActive]}>
-                  No
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Número de microchip (opcional)</Text>
-            <TextInput
-              style={styles.input}
+          {/* Microchip */}
+          {moreOpen ? (
+            <TextField
+              label="Número de microchip"
               placeholder="Ej. 900118000123456"
-              placeholderTextColor="#8B9899"
               value={numeroChip}
               onChangeText={setNumeroChip}
               editable={!saving}
+              keyboardType="number-pad"
             />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.primaryButton, saving && styles.disabledButton]}
-            onPress={handleSave}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.buttonText}>
-                {isEditing ? 'Guardar cambios' : 'Registrar mascota'}
+          ) : (
+            <Pressable
+              onPress={() => setMoreOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Agregar número de microchip (opcional)"
+              style={({ pressed }) => [styles.optionalRow, pressed && { opacity: 0.8 }]}
+            >
+              <IconPlus size={20} color={colors.teal} />
+              <Text style={[t.body, { color: colors.ink, flex: 1, fontFamily: fonts.textMedium }]}>
+                Agregar número de microchip
               </Text>
-            )}
-          </TouchableOpacity>
+              <Text style={[t.small, { color: colors.inkSoft }]}>Opcional</Text>
+            </Pressable>
+          )}
+        </ScrollView>
 
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => navigation.goBack()}
-            disabled={saving}
-          >
-            <Text style={styles.cancelButtonText}>Cancelar</Text>
-          </TouchableOpacity>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}>
+          <PrimaryButton
+            label={isEditing ? 'Guardar cambios' : 'Registrar mascota'}
+            onPress={handleSave}
+            loading={saving}
+          />
         </View>
-      </ScrollView>
+      </View>
+
+      {/* Hoja: elegir raza */}
+      <BottomSheet
+        visible={breedSheetOpen}
+        onClose={() => setBreedSheetOpen(false)}
+        title="Elige la raza"
+      >
+        {availableBreeds.map((br) => {
+          const selected = br.id === razaId;
+          return (
+            <Pressable
+              key={br.id}
+              onPress={() => {
+                setRazaId(br.id);
+                setBreedSheetOpen(false);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={br.nombre}
+              accessibilityState={{ selected }}
+              style={({ pressed }) => [
+                styles.sheetRow,
+                selected && { backgroundColor: colors.mintSelected },
+                pressed && { opacity: 0.85 },
+              ]}
+            >
+              <Text style={[t.rowTitle, { color: colors.ink, flex: 1 }]}>{br.nombre}</Text>
+              {selected ? <IconCheck size={22} color={colors.teal} /> : null}
+            </Pressable>
+          );
+        })}
+      </BottomSheet>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  outer: {
+  screen: {
     flex: 1,
-    backgroundColor: '#F6F3EC',
+    backgroundColor: colors.ground,
   },
-  loadingContainer: {
+  center: {
     flex: 1,
-    backgroundColor: '#F6F3EC',
+    backgroundColor: colors.ground,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#526466',
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    alignItems: 'center',
-    padding: 20,
-  },
-  card: {
-    width: '100%',
-    maxWidth: 480,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
     padding: 24,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#14282A',
-    letterSpacing: -0.3,
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#526466',
-    marginBottom: 20,
-    lineHeight: 19,
-  },
-  errorBox: {
-    backgroundColor: '#FDF2F2',
-    borderWidth: 1,
-    borderColor: '#F5C2C0',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: '#A61B1B',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  fieldGroup: {
+  column: {
+    flex: 1,
     width: '100%',
-    marginBottom: 16,
+    maxWidth: 480,
+    alignSelf: 'center',
   },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#2A3F41',
-    marginBottom: 8,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 24,
+    gap: 24,
   },
-  input: {
-    width: '100%',
-    backgroundColor: '#FAF8F4',
-    borderWidth: 1,
-    borderColor: '#D8CFC0',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#14282A',
+  segment: {
+    flexDirection: 'row',
+    gap: 8,
   },
   chipRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  choiceChip: {
-    flex: 1,
-    backgroundColor: '#FAF8F4',
-    borderWidth: 1,
-    borderColor: '#D8CFC0',
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  choiceChipActive: {
-    backgroundColor: '#E4F0F1',
-    borderColor: '#0E5A60',
-  },
-  choiceChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#526466',
-  },
-  choiceChipTextActive: {
-    color: '#0E5A60',
-  },
-  breedGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  breedChip: {
-    backgroundColor: '#FAF8F4',
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  breedChipActive: {
-    backgroundColor: '#0E5A60',
-    borderColor: '#0E5A60',
-  },
-  breedChipText: {
-    fontSize: 13,
-    color: '#2A3F41',
-    fontWeight: '500',
-  },
-  breedChipTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  quickDatesRow: {
+  optionalRow: {
+    minHeight: 56,
+    borderRadius: radii.row,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: colors.line,
+    paddingHorizontal: 16,
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  quickDateBtn: {
-    backgroundColor: '#F3E7D3',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  quickDateText: {
-    fontSize: 12,
-    color: '#0E5A60',
-    fontWeight: '600',
-  },
-  primaryButton: {
-    width: '100%',
-    backgroundColor: '#0E5A60',
-    paddingVertical: 14,
-    borderRadius: 10,
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 10,
+    gap: 10,
   },
-  disabledButton: {
-    opacity: 0.7,
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    backgroundColor: colors.ground,
   },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  cancelButton: {
-    width: '100%',
-    backgroundColor: '#FAF8F4',
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
-    paddingVertical: 13,
-    borderRadius: 10,
+  sheetRow: {
+    minHeight: 56,
+    borderRadius: radii.tile,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  cancelButtonText: {
-    color: '#526466',
-    fontSize: 14,
-    fontWeight: '600',
+    gap: 14,
   },
 });

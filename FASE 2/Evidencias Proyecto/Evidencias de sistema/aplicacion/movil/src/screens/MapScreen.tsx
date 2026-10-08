@@ -1,92 +1,81 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import type { MapScreenProps } from '../navigation/types';
-import { API_CONFIG } from '../config/api';
+import { IconMapPin, PrimaryButton, TopBar } from '../components';
+import { colors, radii, type as t } from '../theme';
 
+// Pantalla provisoria: el mapa real (MapLibre + geolocalización) llega en una fase posterior.
 export default function MapScreen({ navigation }: MapScreenProps) {
+  const goBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Login');
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Mapa veterinario</Text>
-        <Text style={styles.infoText}>
-          Búsqueda de clínicas, laboratorios, peluquerías y tiendas sobre OpenStreetMap.
-        </Text>
+    <View style={styles.screen}>
+      <StatusBar style="dark" />
+      <View style={styles.column}>
+        <TopBar title="Mapa veterinario" onBack={goBack} />
 
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate('Pets')}
-        >
-          <Text style={styles.buttonText}>Ir a Mis mascotas</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={() => navigation.navigate('Login')}
-        >
-          <Text style={styles.secondaryButtonText}>Volver a inicio</Text>
-        </TouchableOpacity>
+        <View style={styles.content}>
+          <View style={styles.card}>
+            <View style={styles.icon}>
+              <IconMapPin size={30} color={colors.teal} />
+            </View>
+            <Text style={[t.cardTitle, { color: colors.ink, textAlign: 'center' }]}>
+              El mapa llega pronto
+            </Text>
+            <Text style={[t.body, { color: colors.inkSoft, textAlign: 'center' }]}>
+              Vas a poder buscar clínicas, laboratorios, peluquerías y tiendas para tu mascota cerca de ti.
+            </Text>
+            <PrimaryButton
+              label="Ver mis mascotas"
+              onPress={() => navigation.navigate('Pets')}
+              style={{ alignSelf: 'stretch', marginTop: 8 }}
+            />
+          </View>
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: '#F6F3EC',
-    alignItems: 'center',
+    backgroundColor: colors.ground,
+  },
+  column: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 40,
     justifyContent: 'center',
-    padding: 24,
   },
   card: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
     padding: 24,
+    gap: 12,
     alignItems: 'center',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#14282A',
-    letterSpacing: -0.3,
-    marginBottom: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#526466',
-    marginBottom: 24,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  primaryButton: {
-    width: '100%',
-    backgroundColor: '#0E5A60',
-    paddingVertical: 14,
-    borderRadius: 10,
+  icon: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: colors.mint,
     alignItems: 'center',
-    marginBottom: 10,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  secondaryButton: {
-    width: '100%',
-    backgroundColor: '#FAF8F4',
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
-    paddingVertical: 13,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    color: '#526466',
-    fontSize: 14,
-    fontWeight: '600',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
 });

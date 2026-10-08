@@ -21,7 +21,14 @@ import {
   status as statusColors,
   type as t,
 } from '../theme';
-import { IconBack, IconBug, IconChevronDown, IconPill, IconSyringe } from './Icons';
+import {
+  IconBack,
+  IconBug,
+  IconChevronDown,
+  IconChevronRight,
+  IconPill,
+  IconSyringe,
+} from './Icons';
 
 /* ------------------------------------------------------------------ Avatar */
 
@@ -288,9 +295,12 @@ export function CategoryIcon({
   categoria: string;
   size?: number;
 }) {
+  // Tolera ambos nombres que puede traer la API: desparasitacion_* y antiparasitario_*.
   const key: CategoryKey =
-    categoria === 'vacuna' || categoria === 'desparasitacion_interna'
-      ? categoria
+    categoria === 'vacuna'
+      ? 'vacuna'
+      : /intern/i.test(categoria)
+      ? 'desparasitacion_interna'
       : 'desparasitacion_externa';
   const { bg, fg } = categoryStyle[key];
   const iconSize = Math.round(size * 0.55);
@@ -349,17 +359,20 @@ export function SelectField({
   title,
   subtitle,
   onPress,
+  label = 'Tratamiento',
 }: {
   categoria?: string;
   title: string;
   subtitle?: string;
   onPress: () => void;
+  /** Nombre del campo para lectores de pantalla. */
+  label?: string;
 }) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Tratamiento: ${title}. Toca para cambiar`}
+      accessibilityLabel={`${label}: ${title}. Toca para cambiar`}
       style={({ pressed }) => [styles.select, pressed && { opacity: 0.85 }]}
     >
       {categoria ? <CategoryIcon categoria={categoria} size={44} /> : null}
@@ -387,6 +400,36 @@ export function TextField({ label, style, ...input }: { label: string } & TextIn
         style={[styles.input, input.multiline && styles.inputMultiline, style]}
       />
     </View>
+  );
+}
+
+/* ---------------------------------------------------------------- LinkRow */
+
+/** Fila de navegación: icono en cuadrito, texto y flecha. */
+export function LinkRow({
+  icon,
+  label,
+  onPress,
+  iconBg = colors.mint,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onPress: () => void;
+  iconBg?: string;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.linkRow, pressed && { opacity: 0.85 }]}
+    >
+      <View style={[styles.linkIcon, { backgroundColor: iconBg }]}>{icon}</View>
+      <Text style={[t.rowTitle, { color: colors.ink, flex: 1, fontFamily: fonts.textMedium }]}>
+        {label}
+      </Text>
+      <IconChevronRight color={colors.inkSoft} size={20} />
+    </Pressable>
   );
 }
 
@@ -493,6 +536,22 @@ const styles = StyleSheet.create({
   inputMultiline: {
     minHeight: 96,
     textAlignVertical: 'top',
+  },
+  linkRow: {
+    minHeight: 60,
+    backgroundColor: colors.surface,
+    borderRadius: radii.row,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  linkIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   errorBox: {
     backgroundColor: colors.dangerBg,

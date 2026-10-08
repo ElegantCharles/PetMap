@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  ScrollView,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { TreatmentFormScreenProps } from '../navigation/types';
 import {
   TreatmentCatalogItem,
@@ -16,17 +19,69 @@ import {
   fetchPetTreatments,
   createPetTreatment,
   updatePetTreatment,
-  formatCategoryLabel,
   getTodayIsoDate,
   computeSuggestedBoosterDate,
 } from '../services/treatments';
+import {
+  Avatar,
+  BottomSheet,
+  CategoryIcon,
+  Chip,
+  ErrorBox,
+  IconCheck,
+  IconPlus,
+  PrimaryButton,
+  SelectField,
+  TextButton,
+  TextField,
+  TopBar,
+} from '../components';
+import {
+  addDaysIso,
+  colors,
+  daysAgo,
+  daysFromToday,
+  fonts,
+  formatCadence,
+  formatDateLong,
+  formatRelativeDays,
+  parseIso,
+  radii,
+  type as t,
+} from '../theme';
 
-export default function TreatmentFormScreen({
-  navigation,
-  route,
-}: TreatmentFormScreenProps) {
+const FILTERS: { key: TreatmentCategory | 'all'; label: string }[] = [
+  { key: 'all', label: 'Todas' },
+  { key: 'vacuna', label: 'Vacunas' },
+  { key: 'desparasitacion_interna', label: 'Internas' },
+  { key: 'desparasitacion_externa', label: 'Externas' },
+];
+
+const QUICK_DATES: { label: string; ago: number }[] = [
+  { label: 'Hoy', ago: 0 },
+  { label: 'Ayer', ago: 1 },
+  { label: 'Hace 1 semana', ago: 7 },
+];
+
+function categoryShortLabel(categoria: string): string {
+  if (categoria === 'vacuna') return 'Vacuna';
+  if (categoria === 'desparasitacion_interna') return 'Desparasitante interno';
+  return 'Desparasitante externo';
+}
+
+/** Línea corta de la fila: qué cubre el tratamiento, sin la frase repetida de la API. */
+function aboutText(item: TreatmentCatalogItem): string {
+  const cleaned = (item.descripcion ?? '')
+    .replace(/vacuna\s+obligatoria\s+recomendada\.?/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned || categoryShortLabel(item.categoria);
+}
+
+export default function TreatmentFormScreen({ navigation, route }: TreatmentFormScreenProps) {
   const { petId, petName, especieId, recordId } = route.params;
   const isEditing = Boolean(recordId);
+  const insets = useSafeAreaInsets();
 
   const [catalog, setCatalog] = useState<TreatmentCatalogItem[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<TreatmentCategory | 'all'>('all');
@@ -37,6 +92,11 @@ export default function TreatmentFormScreen({
   const [loteProducto, setLoteProducto] = useState<string>('');
   const [veterinariaNombre, setVeterinariaNombre] = useState<string>('');
   const [notas, setNotas] = useState<string>('');
+
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [customDateOpen, setCustomDateOpen] = useState(false);
+  const [boosterTextOpen, setBoosterTextOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
@@ -62,22 +122,23 @@ export default function TreatmentFormScreen({
             setLoteProducto(existing.lote_producto || '');
             setVeterinariaNombre(existing.veterinaria_nombre || '');
             setNotas(existing.notas || '');
+            if (existing.lote_producto || existing.veterinaria_nombre || existing.notas) {
+              setDetailsOpen(true);
+            }
           }
         } else if (items.length > 0) {
           const first = items[0];
           setSelectedTreatmentId(first.id);
-          const suggested = computeSuggestedBoosterDate(
-            getTodayIsoDate(),
-            first.intervalo_refuerzo_dias
+          setFechaProximoRefuerzo(
+            computeSuggestedBoosterDate(getTodayIsoDate(), first.intervalo_refuerzo_dias)
           );
-          setFechaProximoRefuerzo(suggested);
         }
       } catch (error) {
         if (mounted) {
           setErrorMessage(
             error instanceof Error
               ? error.message
-              : 'Error al cargar catálogo de tratamientos'
+              : 'No se pudo cargar la lista de tratamientos. Revisa tu conexión e intenta de nuevo.'
           );
         }
       } finally {
@@ -92,30 +153,35 @@ export default function TreatmentFormScreen({
     };
   }, [especieId, petId, recordId]);
 
-  const selectedTreatment =
-    catalog.find((item) => item.id === selectedTreatmentId) || null;
+  const selectedTreatment = catalog.find((item) => item.id === selectedTreatmentId) || null;
+
+  const filteredCatalog =
+    categoryFilter === 'all'
+      ? catalog
+      : catalog.filter((item) => item.categoria === categoryFilter);
+
+  /* ------------------------------------------------------------ acciones */
 
   const handleSelectTreatment = (item: TreatmentCatalogItem) => {
     setSelectedTreatmentId(item.id);
-    const suggested = computeSuggestedBoosterDate(
-      fechaAplicacion,
-      item.intervalo_refuerzo_dias
-    );
-    setFechaProximoRefuerzo(suggested);
+    setFechaProximoRefuerzo(computeSuggestedBoosterDate(fechaAplicacion, item.intervalo_refuerzo_dias));
     setManualBoosterEdited(false);
+    setSheetOpen(false);
   };
 
   const handleChangeFechaAplicacion = (value: string) => {
     setFechaAplicacion(value);
     if (!manualBoosterEdited && selectedTreatment) {
-      const suggested = computeSuggestedBoosterDate(
-        value,
-        selectedTreatment.intervalo_refuerzo_dias
-      );
+      const suggested = computeSuggestedBoosterDate(value, selectedTreatment.intervalo_refuerzo_dias);
       if (suggested) {
         setFechaProximoRefuerzo(suggested);
       }
     }
+  };
+
+  const handleQuickDate = (ago: number) => {
+    setCustomDateOpen(false);
+    handleChangeFechaAplicacion(addDaysIso(getTodayIsoDate(), -ago));
   };
 
   const handleChangeBoosterManual = (value: string) => {
@@ -123,31 +189,35 @@ export default function TreatmentFormScreen({
     setManualBoosterEdited(true);
   };
 
-  const handleRecalculateSuggestion = () => {
-    if (!selectedTreatment) return;
-    const suggested = computeSuggestedBoosterDate(
-      fechaAplicacion,
-      selectedTreatment.intervalo_refuerzo_dias
-    );
-    setFechaProximoRefuerzo(suggested);
-    setManualBoosterEdited(false);
+  const shiftBooster = (days: number) => {
+    const base = parseIso(fechaProximoRefuerzo)
+      ? fechaProximoRefuerzo
+      : parseIso(fechaAplicacion)
+      ? fechaAplicacion
+      : getTodayIsoDate();
+    setFechaProximoRefuerzo(addDaysIso(base, days));
+    setManualBoosterEdited(true);
   };
 
-  const filteredCatalog =
-    categoryFilter === 'all'
-      ? catalog
-      : catalog.filter((item) => item.categoria === categoryFilter);
+  const handleRecalculateSuggestion = () => {
+    if (!selectedTreatment) return;
+    setFechaProximoRefuerzo(
+      computeSuggestedBoosterDate(fechaAplicacion, selectedTreatment.intervalo_refuerzo_dias)
+    );
+    setManualBoosterEdited(false);
+    setBoosterTextOpen(false);
+  };
 
   const handleSubmit = async () => {
     setErrorMessage(null);
 
     if (!selectedTreatmentId) {
-      setErrorMessage('Selecciona una vacuna o desparasitación del catálogo.');
+      setErrorMessage('Elige una vacuna o desparasitante de la lista.');
       return;
     }
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaAplicacion.trim())) {
-      setErrorMessage('La fecha de aplicación debe tener formato AAAA-MM-DD.');
+      setErrorMessage('Escribe la fecha de aplicación como AAAA-MM-DD, por ejemplo 2026-10-08.');
       return;
     }
 
@@ -155,7 +225,7 @@ export default function TreatmentFormScreen({
       fechaProximoRefuerzo.trim().length > 0 &&
       !/^\d{4}-\d{2}-\d{2}$/.test(fechaProximoRefuerzo.trim())
     ) {
-      setErrorMessage('La fecha de próximo refuerzo debe tener formato AAAA-MM-DD.');
+      setErrorMessage('Escribe la fecha del refuerzo como AAAA-MM-DD, por ejemplo 2026-11-07.');
       return;
     }
 
@@ -165,12 +235,9 @@ export default function TreatmentFormScreen({
         tratamiento_id: selectedTreatmentId,
         fecha_aplicacion: fechaAplicacion.trim(),
         fecha_proximo_refuerzo:
-          fechaProximoRefuerzo.trim().length > 0
-            ? fechaProximoRefuerzo.trim()
-            : null,
+          fechaProximoRefuerzo.trim().length > 0 ? fechaProximoRefuerzo.trim() : null,
         lote_producto: loteProducto.trim().length > 0 ? loteProducto.trim() : null,
-        veterinaria_nombre:
-          veterinariaNombre.trim().length > 0 ? veterinariaNombre.trim() : null,
+        veterinaria_nombre: veterinariaNombre.trim().length > 0 ? veterinariaNombre.trim() : null,
         notas: notas.trim().length > 0 ? notas.trim() : null,
       };
 
@@ -183,442 +250,378 @@ export default function TreatmentFormScreen({
       navigation.navigate('PetDetail', { petId });
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'No se pudo guardar el registro'
+        error instanceof Error ? error.message : 'No se pudo guardar la dosis. Intenta de nuevo.'
       );
     } finally {
       setSaving(false);
     }
   };
 
+  const goBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('PetDetail', { petId });
+    }
+  };
+
+  /* ------------------------------------------------------------- derivados */
+
+  const ago = daysAgo(fechaAplicacion);
+  const isPresetDate = ago !== null && QUICK_DATES.some((q) => q.ago === ago);
+  const showCustomDate = customDateOpen || !isPresetDate;
+
+  const boosterDays = daysFromToday(fechaProximoRefuerzo);
+  const boosterValid = parseIso(fechaProximoRefuerzo) !== null;
+  const boosterLine = boosterValid
+    ? `${boosterDays !== null ? formatRelativeDays(boosterDays) : ''} · aplicada el ${formatDateLong(fechaAplicacion)}`
+    : 'Elige una fecha o ajústala con los botones';
+
+  /* --------------------------------------------------------------- estados */
+
   if (initialLoading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#0E5A60" />
-        <Text style={styles.loadingText}>Cargando catálogo sanitario...</Text>
+      <View style={styles.center}>
+        <StatusBar style="dark" />
+        <ActivityIndicator size="large" color={colors.teal} />
+        <Text style={[t.body, { color: colors.inkSoft, marginTop: 12 }]}>Cargando tratamientos…</Text>
       </View>
     );
   }
 
+  /* ---------------------------------------------------------------- pantalla */
+
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
-      <View style={styles.card}>
-        <Text style={styles.petContext}>Carnet de {petName}</Text>
-        <Text style={styles.title}>
-          {isEditing ? 'Editar dosis registrada' : 'Registrar vacuna o desparasitación'}
-        </Text>
-        <Text style={styles.subtitle}>
-          Selecciona el tratamiento aplicado; calcularemos automáticamente la fecha sugerida del próximo refuerzo.
-        </Text>
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <StatusBar style="dark" />
+      <View style={styles.column}>
+        <TopBar
+          title={isEditing ? 'Editar dosis' : 'Registrar dosis'}
+          onBack={goBack}
+          right={
+            <View style={styles.petPill}>
+              <Avatar name={petName} size={28} />
+              <Text numberOfLines={1} style={[t.label, { color: colors.ink, maxWidth: 90 }]}>
+                {petName}
+              </Text>
+            </View>
+          }
+        />
 
-        {errorMessage ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{errorMessage}</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {errorMessage ? <ErrorBox message={errorMessage} /> : null}
+
+          {/* Tratamiento */}
+          <View style={{ gap: 8 }}>
+            <Text style={[t.label, { color: colors.inkLabel }]}>Tratamiento</Text>
+            <SelectField
+              categoria={selectedTreatment?.categoria}
+              title={selectedTreatment ? selectedTreatment.nombre : 'Elige un tratamiento'}
+              subtitle={
+                selectedTreatment
+                  ? selectedTreatment.intervalo_refuerzo_dias
+                    ? `Refuerzo ${formatCadence(selectedTreatment.intervalo_refuerzo_dias).toLowerCase()}`
+                    : 'Sin refuerzo programado'
+                  : undefined
+              }
+              onPress={() => setSheetOpen(true)}
+            />
           </View>
-        ) : null}
 
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Filtrar por categoría</Text>
-          <View style={styles.filterRow}>
-            {(
-              [
-                { key: 'all', label: 'Todas' },
-                { key: 'vacuna', label: 'Vacuna' },
-                { key: 'desparasitacion_interna', label: 'Desp. Interna' },
-                { key: 'desparasitacion_externa', label: 'Desp. Externa' },
-              ] as const
-            ).map((f) => {
-              const active = categoryFilter === f.key;
-              return (
-                <TouchableOpacity
-                  key={f.key}
-                  style={[styles.filterChip, active && styles.filterChipActive]}
-                  onPress={() => setCategoryFilter(f.key)}
-                >
-                  <Text
-                    style={[
-                      styles.filterChipText,
-                      active && styles.filterChipTextActive,
-                    ]}
-                  >
-                    {f.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Vacuna o antiparasitario *</Text>
-          <View style={styles.treatmentList}>
-            {filteredCatalog.map((item) => {
-              const selected = item.id === selectedTreatmentId;
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[
-                    styles.treatmentOption,
-                    selected && styles.treatmentOptionSelected,
-                  ]}
-                  onPress={() => handleSelectTreatment(item)}
-                >
-                  <View style={styles.treatmentHeader}>
-                    <Text
-                      style={[
-                        styles.treatmentName,
-                        selected && styles.treatmentNameSelected,
-                      ]}
-                    >
-                      {item.nombre}
-                    </Text>
-                    <View
-                      style={[
-                        styles.catBadge,
-                        item.categoria === 'vacuna'
-                          ? styles.catVacuna
-                          : item.categoria === 'desparasitacion_interna'
-                          ? styles.catInterna
-                          : styles.catExterna,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.catBadgeText,
-                          item.categoria === 'vacuna'
-                            ? styles.catVacunaText
-                            : item.categoria === 'desparasitacion_interna'
-                            ? styles.catInternaText
-                            : styles.catExternaText,
-                        ]}
-                      >
-                        {formatCategoryLabel(item.categoria)}
-                      </Text>
-                    </View>
-                  </View>
-                  {item.descripcion ? (
-                    <Text style={styles.treatmentDesc}>{item.descripcion}</Text>
-                  ) : null}
-                  {item.intervalo_refuerzo_dias ? (
-                    <Text style={styles.treatmentInterval}>
-                      Refuerzo sugerido cada {item.intervalo_refuerzo_dias} días
-                    </Text>
-                  ) : null}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Fecha de aplicación (AAAA-MM-DD) *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ej. 2026-10-08"
-            placeholderTextColor="#8B9899"
-            value={fechaAplicacion}
-            onChangeText={handleChangeFechaAplicacion}
-          />
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <View style={styles.boosterLabelRow}>
-            <Text style={styles.label}>Fecha próximo refuerzo (AAAA-MM-DD)</Text>
-            {selectedTreatment?.intervalo_refuerzo_dias ? (
-              <TouchableOpacity onPress={handleRecalculateSuggestion}>
-                <Text style={styles.recalcLink}>Recalcular (+{selectedTreatment.intervalo_refuerzo_dias}d)</Text>
-              </TouchableOpacity>
+          {/* Fecha de aplicación */}
+          <View style={{ gap: 8 }}>
+            <Text style={[t.label, { color: colors.inkLabel }]}>¿Cuándo se aplicó?</Text>
+            <View style={styles.chipRow}>
+              {QUICK_DATES.map((q) => (
+                <Chip
+                  key={q.label}
+                  label={q.label}
+                  selected={!showCustomDate && ago === q.ago}
+                  onPress={() => handleQuickDate(q.ago)}
+                />
+              ))}
+              <Chip
+                label="Otra fecha"
+                selected={showCustomDate}
+                onPress={() => setCustomDateOpen(true)}
+              />
+            </View>
+            {showCustomDate ? (
+              <TextField
+                label="Fecha de aplicación (AAAA-MM-DD)"
+                placeholder="2026-10-08"
+                value={fechaAplicacion}
+                onChangeText={handleChangeFechaAplicacion}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
             ) : null}
           </View>
-          <TextInput
-            style={styles.input}
-            placeholder="Calculada automáticamente o edítala"
-            placeholderTextColor="#8B9899"
-            value={fechaProximoRefuerzo}
-            onChangeText={handleChangeBoosterManual}
-          />
-          <Text style={styles.helperText}>
-            Se sugiere automáticamente según el tratamiento; puedes modificarla si tu veterinario indicó otra fecha.
-          </Text>
-        </View>
 
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Veterinaria o clínica (opcional)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ej. Clínica Veterinaria Providencia"
-            placeholderTextColor="#8B9899"
-            value={veterinariaNombre}
-            onChangeText={setVeterinariaNombre}
-          />
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Lote o marca del producto (opcional)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ej. Nobivac Lote A492"
-            placeholderTextColor="#8B9899"
-            value={loteProducto}
-            onChangeText={setLoteProducto}
-          />
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Notas u observaciones (opcional)</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Ej. Sin reacciones adversas, peso control 12.4 kg"
-            placeholderTextColor="#8B9899"
-            value={notas}
-            onChangeText={setNotas}
-            multiline
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[styles.primaryButton, saving && styles.buttonDisabled]}
-          onPress={handleSubmit}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.primaryButtonText}>
-              {isEditing ? 'Guardar cambios' : 'Registrar en el carnet'}
+          {/* Próximo refuerzo (protagonista) */}
+          <View style={styles.boosterCard}>
+            <Text style={[t.bodySemi, { color: colors.ink }]}>Próximo refuerzo</Text>
+            <Text
+              accessibilityLabel={`Próximo refuerzo: ${boosterValid ? formatDateLong(fechaProximoRefuerzo) : 'sin fecha'}`}
+              style={[t.bigDate, { color: colors.ink }]}
+              adjustsFontSizeToFit
+              numberOfLines={1}
+            >
+              {boosterValid ? formatDateLong(fechaProximoRefuerzo) : '—'}
             </Text>
-          )}
-        </TouchableOpacity>
+            <Text style={[t.body, { color: colors.ballInk }]}>{boosterLine}</Text>
 
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={() => navigation.goBack()}
-          disabled={saving}
-        >
-          <Text style={styles.cancelButtonText}>Cancelar</Text>
-        </TouchableOpacity>
+            <View style={styles.boosterButtons}>
+              <Pressable
+                onPress={() => shiftBooster(-7)}
+                accessibilityRole="button"
+                accessibilityLabel="Adelantar el refuerzo una semana"
+                style={({ pressed }) => [styles.boosterBtn, pressed && { opacity: 0.7 }]}
+              >
+                <Text style={[t.label, { color: colors.ink }]}>− 1 semana</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => shiftBooster(7)}
+                accessibilityRole="button"
+                accessibilityLabel="Atrasar el refuerzo una semana"
+                style={({ pressed }) => [styles.boosterBtn, pressed && { opacity: 0.7 }]}
+              >
+                <Text style={[t.label, { color: colors.ink }]}>+ 1 semana</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.boosterLinks}>
+              <TextButton
+                label={boosterTextOpen ? 'Ocultar fecha escrita' : 'Escribir otra fecha'}
+                onPress={() => setBoosterTextOpen((v) => !v)}
+                color={colors.ink}
+                underline
+              />
+              {manualBoosterEdited && selectedTreatment?.intervalo_refuerzo_dias ? (
+                <TextButton
+                  label="Usar la fecha sugerida"
+                  onPress={handleRecalculateSuggestion}
+                  color={colors.ink}
+                  underline
+                />
+              ) : null}
+            </View>
+
+            {boosterTextOpen ? (
+              <TextField
+                label="Fecha del refuerzo (AAAA-MM-DD)"
+                placeholder="2026-11-07"
+                value={fechaProximoRefuerzo}
+                onChangeText={handleChangeBoosterManual}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            ) : null}
+          </View>
+
+          {/* Más detalles */}
+          {detailsOpen ? (
+            <View style={{ gap: 16 }}>
+              <TextField
+                label="Veterinaria o clínica"
+                placeholder="Ej. Clínica Veterinaria Providencia"
+                value={veterinariaNombre}
+                onChangeText={setVeterinariaNombre}
+              />
+              <TextField
+                label="Lote o marca del producto"
+                placeholder="Ej. Nobivac Lote A492"
+                value={loteProducto}
+                onChangeText={setLoteProducto}
+              />
+              <TextField
+                label="Notas"
+                placeholder="Ej. Sin reacciones, peso control 12.4 kg"
+                value={notas}
+                onChangeText={setNotas}
+                multiline
+              />
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => setDetailsOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Agregar clínica, lote o notas (opcional)"
+              style={({ pressed }) => [styles.optionalRow, pressed && { opacity: 0.8 }]}
+            >
+              <IconPlus size={20} color={colors.teal} />
+              <Text style={[t.body, { color: colors.ink, flex: 1, fontFamily: fonts.textMedium }]}>
+                Agregar clínica, lote o notas
+              </Text>
+              <Text style={[t.small, { color: colors.inkSoft }]}>Opcional</Text>
+            </Pressable>
+          )}
+        </ScrollView>
+
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}>
+          <PrimaryButton
+            label={isEditing ? 'Guardar cambios' : 'Guardar dosis'}
+            onPress={handleSubmit}
+            loading={saving}
+          />
+        </View>
       </View>
-    </ScrollView>
+
+      {/* Hoja: elegir tratamiento */}
+      <BottomSheet
+        visible={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        title="Elige el tratamiento"
+        header={
+          <View style={styles.chipRow}>
+            {FILTERS.map((f) => (
+              <Chip
+                key={f.key}
+                label={f.label}
+                height={40}
+                selected={categoryFilter === f.key}
+                onPress={() => setCategoryFilter(f.key)}
+              />
+            ))}
+          </View>
+        }
+      >
+        {filteredCatalog.length === 0 ? (
+          <Text style={[t.body, { color: colors.inkSoft, padding: 12 }]}>
+            No hay tratamientos en esta categoría.
+          </Text>
+        ) : (
+          filteredCatalog.map((item) => {
+            const selected = item.id === selectedTreatmentId;
+            const cadence = item.intervalo_refuerzo_dias
+              ? formatCadence(item.intervalo_refuerzo_dias).toLowerCase()
+              : 'sin refuerzo';
+            return (
+              <Pressable
+                key={item.id}
+                onPress={() => handleSelectTreatment(item)}
+                accessibilityRole="button"
+                accessibilityLabel={`${item.nombre}. ${aboutText(item)}. ${cadence}`}
+                accessibilityState={{ selected }}
+                style={({ pressed }) => [
+                  styles.sheetRow,
+                  selected && { backgroundColor: colors.mintSelected },
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <CategoryIcon categoria={item.categoria} size={40} />
+                <View style={{ flex: 1, gap: 1 }}>
+                  <Text style={[t.rowTitle, { color: colors.ink }]}>{item.nombre}</Text>
+                  <Text numberOfLines={1} style={[t.small, { color: colors.inkSoft }]}>
+                    {aboutText(item)} · {cadence}
+                  </Text>
+                </View>
+                {selected ? <IconCheck size={22} color={colors.teal} /> : null}
+              </Pressable>
+            );
+          })
+        )}
+      </BottomSheet>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  centerContainer: {
+  screen: {
     flex: 1,
-    backgroundColor: '#F6F3EC',
+    backgroundColor: colors.ground,
+  },
+  center: {
+    flex: 1,
+    backgroundColor: colors.ground,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#526466',
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    backgroundColor: '#F6F3EC',
-    alignItems: 'center',
-    padding: 20,
-  },
-  card: {
+  column: {
+    flex: 1,
     width: '100%',
     maxWidth: 480,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
-    padding: 24,
+    alignSelf: 'center',
   },
-  petContext: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0E5A60',
-    marginBottom: 4,
+  petPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    height: 36,
+    paddingLeft: 4,
+    paddingRight: 12,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#14282A',
-    letterSpacing: -0.3,
-    marginBottom: 4,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 24,
+    gap: 24,
   },
-  subtitle: {
-    fontSize: 13,
-    color: '#526466',
-    marginBottom: 18,
-    lineHeight: 19,
-  },
-  errorBox: {
-    backgroundColor: '#FDF2F2',
-    borderWidth: 1,
-    borderColor: '#F5C2C0',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: '#A61B1B',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  fieldGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#2A3F41',
-    marginBottom: 6,
-  },
-  filterRow: {
+  chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  filterChip: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D8CFC0',
-    backgroundColor: '#FAF8F4',
+  boosterCard: {
+    backgroundColor: colors.ball,
+    borderRadius: radii.card,
+    padding: 20,
+    gap: 4,
   },
-  filterChipActive: {
-    borderColor: '#0E5A60',
-    backgroundColor: '#E4F0F1',
-  },
-  filterChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#526466',
-  },
-  filterChipTextActive: {
-    color: '#0E5A60',
-  },
-  treatmentList: {
-    gap: 8,
-  },
-  treatmentOption: {
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
-    backgroundColor: '#FAF8F4',
-    borderRadius: 10,
-    padding: 12,
-  },
-  treatmentOptionSelected: {
-    borderColor: '#0E5A60',
-    backgroundColor: '#E4F0F1',
-  },
-  treatmentHeader: {
+  boosterButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     gap: 8,
-    marginBottom: 4,
+    marginTop: 14,
   },
-  treatmentName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#14282A',
+  boosterBtn: {
     flex: 1,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  treatmentNameSelected: {
-    color: '#0E5A60',
-  },
-  catBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  catVacuna: {
-    backgroundColor: '#FFFFFF',
-  },
-  catInterna: {
-    backgroundColor: '#F3E7D3',
-  },
-  catExterna: {
-    backgroundColor: '#E8F3E8',
-  },
-  catBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  catVacunaText: {
-    color: '#0E5A60',
-  },
-  catInternaText: {
-    color: '#7A541E',
-  },
-  catExternaText: {
-    color: '#1E5E3A',
-  },
-  treatmentDesc: {
-    fontSize: 12,
-    color: '#526466',
-    marginBottom: 2,
-  },
-  treatmentInterval: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#0E5A60',
-  },
-  input: {
-    backgroundColor: '#FAF8F4',
-    borderWidth: 1,
-    borderColor: '#D8CFC0',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    fontSize: 14,
-    color: '#14282A',
-  },
-  textArea: {
-    minHeight: 72,
-    textAlignVertical: 'top',
-  },
-  boosterLabelRow: {
+  boosterLinks: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  recalcLink: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0E5A60',
-    marginBottom: 6,
-  },
-  helperText: {
-    fontSize: 11,
-    color: '#526466',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
     marginTop: 4,
+    marginLeft: -8,
   },
-  primaryButton: {
-    backgroundColor: '#0E5A60',
-    paddingVertical: 14,
-    borderRadius: 10,
+  optionalRow: {
+    minHeight: 56,
+    borderRadius: radii.row,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: colors.line,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 6,
+    gap: 10,
   },
-  buttonDisabled: {
-    opacity: 0.7,
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    backgroundColor: colors.ground,
   },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  cancelButton: {
-    marginTop: 10,
-    paddingVertical: 12,
-    borderRadius: 10,
+  sheetRow: {
+    minHeight: 64,
+    borderRadius: radii.tile,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAF8F4',
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
-  },
-  cancelButtonText: {
-    color: '#526466',
-    fontSize: 14,
-    fontWeight: '600',
+    gap: 14,
   },
 });

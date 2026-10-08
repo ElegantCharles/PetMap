@@ -1,13 +1,14 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
-  View,
   TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  ScrollView,
+  View,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import type { PetDetailScreenProps } from '../navigation/types';
 import {
   Pet,
@@ -20,9 +21,57 @@ import {
   PetTreatmentRecord,
   fetchPetTreatments,
   deletePetTreatment,
-  formatCategoryLabel,
   getBoosterStatus,
 } from '../services/treatments';
+import {
+  Avatar,
+  BottomSheet,
+  CategoryIcon,
+  ErrorBox,
+  GhostButton,
+  IconButton,
+  IconCalendar,
+  IconChevronRight,
+  IconMore,
+  IconPlus,
+  PopoverMenu,
+  PrimaryButton,
+  StatusPill,
+  TextButton,
+  Tile,
+  TopBar,
+} from '../components';
+import {
+  StatusKey,
+  colors,
+  daysFromToday,
+  floatingShadow,
+  fonts,
+  formatDateLong,
+  formatRelativeDays,
+  initials,
+  radii,
+  type as t,
+} from '../theme';
+
+/* ----------------------------------------------------------- helpers de UI */
+
+function toStatusKey(value: string): StatusKey {
+  return value === 'vencido' || value === 'proximo' || value === 'al_dia' ? value : 'sin_fecha';
+}
+
+function statusLabel(key: StatusKey, days: number | null): string {
+  switch (key) {
+    case 'vencido':
+      return days === null ? 'Vencido' : `Vencido hace ${Math.abs(days)} d`;
+    case 'proximo':
+      return days === 0 ? 'Vence hoy' : days === null ? 'Próximo' : `En ${days} d`;
+    case 'al_dia':
+      return 'Al día';
+    default:
+      return 'Sin refuerzo';
+  }
+}
 
 export default function PetDetailScreen({ navigation, route }: PetDetailScreenProps) {
   const { petId } = route.params;
@@ -32,27 +81,31 @@ export default function PetDetailScreen({ navigation, route }: PetDetailScreenPr
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmDeletePet, setConfirmDeletePet] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const [selectedRecord, setSelectedRecord] = useState<PetTreatmentRecord | null>(null);
+  const [confirmingRecord, setConfirmingRecord] = useState(false);
+  const [deletingRecordId, setDeletingRecordId] = useState<number | null>(null);
+
+  const [showInvite, setShowInvite] = useState(false);
   const [coTutorEmail, setCoTutorEmail] = useState('');
   const [addingTutor, setAddingTutor] = useState(false);
-  const [tutorFeedback, setTutorFeedback] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
-
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [deletingRecordId, setDeletingRecordId] = useState<number | null>(null);
+  const [tutorFeedback, setTutorFeedback] = useState<{ type: 'ok' | 'err'; text: string } | null>(
+    null
+  );
 
   const loadPet = useCallback(async () => {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const [data, records] = await Promise.all([
-        fetchPetById(petId),
-        fetchPetTreatments(petId),
-      ]);
+      const [data, records] = await Promise.all([fetchPetById(petId), fetchPetTreatments(petId)]);
       setPet(data);
       setTreatments(records);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'Error al cargar la ficha de la mascota'
+        error instanceof Error ? error.message : 'No se pudo cargar la ficha de la mascota.'
       );
     } finally {
       setLoading(false);
@@ -67,15 +120,79 @@ export default function PetDetailScreen({ navigation, route }: PetDetailScreenPr
     return unsubscribe;
   }, [navigation, loadPet]);
 
-  const handleDeleteTreatment = async (recordId: number) => {
-    setDeletingRecordId(recordId);
+  const goBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Pets');
+    }
+  };
+
+  /* Dosis ordenadas de la más reciente a la más antigua, y la última de cada tratamiento. */
+  const sortedTreatments = useMemo(
+    () =>
+      [...treatments].sort((a, b) =>
+        a.fecha_aplicacion < b.fecha_aplicacion ? 1 : a.fecha_aplicacion > b.fecha_aplicacion ? -1 : 0
+      ),
+    [treatments]
+  );
+
+  const latestIds = useMemo(() => {
+    const seen = new Set<number>();
+    const ids = new Set<number>();
+    sortedTreatments.forEach((rec) => {
+      if (!seen.has(rec.tratamiento_id)) {
+        seen.add(rec.tratamiento_id);
+        ids.add(rec.id);
+      }
+    });
+    return ids;
+  }, [sortedTreatments]);
+
+  /* Protagonista: el refuerzo más urgente (vencido primero) entre las últimas dosis. */
+  const next = useMemo(() => {
+    const candidates = sortedTreatments
+      .filter((rec) => latestIds.has(rec.id) && rec.fecha_proximo_refuerzo)
+      .map((rec) => ({ rec, days: daysFromToday(rec.fecha_proximo_refuerzo) }))
+      .filter((x): x is { rec: PetTreatmentRecord; days: number } => x.days !== null)
+      .sort((a, b) => a.days - b.days);
+    return candidates.length > 0 ? candidates[0] : null;
+  }, [sortedTreatments, latestIds]);
+
+  const goToNewDose = () => {
+    if (!pet) return;
+    navigation.navigate('TreatmentForm', {
+      petId: pet.id,
+      petName: pet.nombre,
+      especieId: pet.especie_id,
+    });
+  };
+
+  const goToEditDose = (rec: PetTreatmentRecord) => {
+    if (!pet) return;
+    setSelectedRecord(null);
+    setConfirmingRecord(false);
+    navigation.navigate('TreatmentForm', {
+      petId: pet.id,
+      petName: pet.nombre,
+      especieId: pet.especie_id,
+      recordId: rec.id,
+    });
+  };
+
+  const handleDeleteTreatment = async (rec: PetTreatmentRecord) => {
+    setDeletingRecordId(rec.id);
     setErrorMessage(null);
     try {
-      await deletePetTreatment(petId, recordId);
-      setTreatments((prev) => prev.filter((item) => item.id !== recordId));
+      await deletePetTreatment(petId, rec.id);
+      setTreatments((prev) => prev.filter((item) => item.id !== rec.id));
+      setSelectedRecord(null);
+      setConfirmingRecord(false);
     } catch (error) {
+      setSelectedRecord(null);
+      setConfirmingRecord(false);
       setErrorMessage(
-        error instanceof Error ? error.message : 'No se pudo eliminar el registro sanitario'
+        error instanceof Error ? error.message : 'No se pudo eliminar el registro. Intenta de nuevo.'
       );
     } finally {
       setDeletingRecordId(null);
@@ -86,838 +203,594 @@ export default function PetDetailScreen({ navigation, route }: PetDetailScreenPr
     setTutorFeedback(null);
     const trimmed = coTutorEmail.trim().toLowerCase();
     if (!trimmed) {
-      setTutorFeedback({ type: 'err', text: 'Ingresa el correo del cotutor registrado.' });
+      setTutorFeedback({ type: 'err', text: 'Escribe el correo de tu familiar registrado.' });
       return;
     }
-
     setAddingTutor(true);
     try {
       const updated = await addPetTutor(petId, trimmed);
       setPet(updated);
       setCoTutorEmail('');
-      setTutorFeedback({ type: 'ok', text: 'Cotutor asociado correctamente.' });
+      setTutorFeedback({ type: 'ok', text: 'Listo, ya comparten la ficha.' });
     } catch (error) {
       setTutorFeedback({
         type: 'err',
-        text: error instanceof Error ? error.message : 'No se pudo agregar al cotutor.',
+        text: error instanceof Error ? error.message : 'No se pudo agregar al familiar.',
       });
     } finally {
       setAddingTutor(false);
     }
   };
 
-  const handleDelete = async () => {
+  const handleDeletePet = async () => {
     setDeleting(true);
     try {
       await deletePet(petId);
       navigation.replace('Pets');
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'No se pudo eliminar la mascota'
+        error instanceof Error ? error.message : 'No se pudo eliminar la mascota. Intenta de nuevo.'
       );
       setDeleting(false);
-      setConfirmingDelete(false);
+      setConfirmDeletePet(false);
     }
   };
 
-  if (loading) {
+  /* ------------------------------------------------------------- estados */
+
+  if (loading && !pet) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#0E5A60" />
-        <Text style={styles.loadingText}>Cargando ficha de mascota...</Text>
+      <View style={styles.center}>
+        <StatusBar style="dark" />
+        <ActivityIndicator size="large" color={colors.teal} />
+        <Text style={[t.body, { color: colors.inkSoft, marginTop: 12 }]}>Cargando ficha…</Text>
       </View>
     );
   }
 
   if (!pet) {
     return (
-      <View style={styles.centerContainer}>
-        <View style={styles.card}>
-          <Text style={styles.errorTitle}>{errorMessage || 'Mascota no encontrada'}</Text>
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => navigation.replace('Pets')}
-          >
-            <Text style={styles.secondaryButtonText}>Volver a Mis mascotas</Text>
-          </TouchableOpacity>
+      <View style={styles.center}>
+        <StatusBar style="dark" />
+        <View style={styles.errorWrap}>
+          <ErrorBox message={errorMessage || 'No encontramos a esta mascota.'} />
+          <PrimaryButton label="Volver a mis mascotas" onPress={() => navigation.replace('Pets')} />
         </View>
       </View>
     );
   }
 
+  const sexLabel = pet.sexo === 'macho' ? 'Macho' : 'Hembra';
+  const breed = pet.raza_nombre || `${pet.especie_nombre} mestizo`;
+  const sterilized = pet.sexo === 'macho' ? 'Esterilizado' : 'Esterilizada';
+  const hasDoses = sortedTreatments.length > 0;
+
+  /* -------------------------------------------------------------- pantalla */
+
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
-      <View style={styles.card}>
-        <View style={styles.headerRow}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarInitial}>
-              {pet.nombre.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-          <View style={styles.headerInfo}>
-            <Text style={styles.speciesSubtitle}>
-              {pet.especie_nombre}, {pet.raza_nombre || 'Mestizo'}
-            </Text>
-            <Text style={styles.petName}>{pet.nombre}</Text>
-            <Text style={styles.ageHighlight}>{formatPetAge(pet.fecha_nacimiento)}</Text>
-          </View>
-        </View>
-
-        {errorMessage ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{errorMessage}</Text>
-          </View>
-        ) : null}
-
-        <View style={styles.infoGrid}>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Fecha de nacimiento</Text>
-            <Text style={styles.infoValue}>{pet.fecha_nacimiento}</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Sexo</Text>
-            <Text style={styles.infoValue}>
-              {pet.sexo === 'macho' ? 'Macho' : 'Hembra'}
-            </Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Esterilización</Text>
-            <Text style={styles.infoValue}>
-              {pet.esterilizado ? 'Esterilizado/a' : 'Sin esterilizar'}
-            </Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Microchip</Text>
-            <Text style={styles.infoValue}>
-              {pet.numero_chip || 'No registrado'}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.sectionBox}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitleNoMargin}>
-              Carnet sanitario ({treatments.length})
-            </Text>
-            <TouchableOpacity
-              style={styles.addDoseButton}
-              onPress={() =>
-                navigation.navigate('TreatmentForm', {
-                  petId: pet.id,
-                  petName: pet.nombre,
-                  especieId: pet.especie_id,
-                })
+    <View style={styles.screen}>
+      <StatusBar style="light" />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.column}>
+          {/* Cabecera */}
+          <View style={styles.hero}>
+            <TopBar
+              onTeal
+              onBack={goBack}
+              right={
+                <IconButton label="Más opciones" onPress={() => setMenuOpen(true)} onTeal>
+                  <IconMore color={colors.onTeal} />
+                </IconButton>
               }
-            >
-              <Text style={styles.addDoseButtonText}>+ Registrar dosis</Text>
-            </TouchableOpacity>
-          </View>
-
-          {treatments.length === 0 ? (
-            <Text style={styles.emptySmall}>
-              Aún no hay vacunas ni desparasitaciones registradas para {pet.nombre}.
-            </Text>
-          ) : (
-            treatments.map((rec) => {
-              const boosterInfo = getBoosterStatus(rec.fecha_proximo_refuerzo);
-              return (
-                <View key={rec.id} style={styles.doseCard}>
-                  <View style={styles.doseTopRow}>
-                    <View
-                      style={[
-                        styles.catBadge,
-                        rec.tratamiento_categoria === 'vacuna'
-                          ? styles.catVacuna
-                          : rec.tratamiento_categoria === 'desparasitacion_interna'
-                          ? styles.catInterna
-                          : styles.catExterna,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.catBadgeText,
-                          rec.tratamiento_categoria === 'vacuna'
-                            ? styles.catVacunaText
-                            : rec.tratamiento_categoria === 'desparasitacion_interna'
-                            ? styles.catInternaText
-                            : styles.catExternaText,
-                        ]}
-                      >
-                        {formatCategoryLabel(rec.tratamiento_categoria)}
-                      </Text>
-                    </View>
-
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        boosterInfo.status === 'vencido'
-                          ? styles.statusVencido
-                          : boosterInfo.status === 'proximo'
-                          ? styles.statusProximo
-                          : boosterInfo.status === 'al_dia'
-                          ? styles.statusAlDia
-                          : styles.statusSinFecha,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.statusBadgeText,
-                          boosterInfo.status === 'vencido'
-                            ? styles.statusVencidoText
-                            : boosterInfo.status === 'proximo'
-                            ? styles.statusProximoText
-                            : boosterInfo.status === 'al_dia'
-                            ? styles.statusAlDiaText
-                            : styles.statusSinFechaText,
-                        ]}
-                      >
-                        {boosterInfo.label}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <Text style={styles.doseTitle}>{rec.tratamiento_nombre}</Text>
-
-                  <View style={styles.doseDatesRow}>
-                    <Text style={styles.doseDateText}>
-                      Aplicada: {rec.fecha_aplicacion}
-                    </Text>
-                    {rec.fecha_proximo_refuerzo ? (
-                      <Text style={styles.doseDateText}>
-                        Refuerzo: {rec.fecha_proximo_refuerzo}
-                      </Text>
-                    ) : null}
-                  </View>
-
-                  {rec.veterinaria_nombre ? (
-                    <Text style={styles.doseMetaText}>
-                      Clínica: {rec.veterinaria_nombre}
-                    </Text>
-                  ) : null}
-                  {rec.lote_producto ? (
-                    <Text style={styles.doseMetaText}>
-                      Lote: {rec.lote_producto}
-                    </Text>
-                  ) : null}
-                  {rec.notas ? (
-                    <Text style={styles.doseMetaText}>Notas: {rec.notas}</Text>
-                  ) : null}
-
-                  <View style={styles.doseActionsRow}>
-                    <TouchableOpacity
-                      style={styles.doseEditBtn}
-                      onPress={() =>
-                        navigation.navigate('TreatmentForm', {
-                          petId: pet.id,
-                          petName: pet.nombre,
-                          especieId: pet.especie_id,
-                          recordId: rec.id,
-                        })
-                      }
-                    >
-                      <Text style={styles.doseEditBtnText}>Editar</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.doseDeleteBtn}
-                      onPress={() => handleDeleteTreatment(rec.id)}
-                      disabled={deletingRecordId === rec.id}
-                    >
-                      <Text style={styles.doseDeleteBtnText}>
-                        {deletingRecordId === rec.id ? 'Eliminando...' : 'Eliminar'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
-            })
-          )}
-
-          <TouchableOpacity
-            style={styles.calendarLinkBtn}
-            onPress={() => navigation.navigate('Calendar')}
-          >
-            <Text style={styles.calendarLinkText}>
-              Ver calendario general de refuerzos
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.sectionBox}>
-          <Text style={styles.sectionTitle}>Tutores y cotutores</Text>
-          {pet.tutores && pet.tutores.length > 0 ? (
-            pet.tutores.map((t) => (
-              <View key={t.id} style={styles.tutorRow}>
-                <View style={styles.tutorInfo}>
-                  <Text style={styles.tutorName}>{t.nombre_completo}</Text>
-                  <Text style={styles.tutorEmail}>{t.email}</Text>
-                </View>
-                <View
-                  style={[
-                    styles.roleBadge,
-                    t.es_tutor_principal ? styles.primaryRoleBadge : styles.coRoleBadge,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.roleBadgeText,
-                      t.es_tutor_principal ? styles.primaryRoleText : styles.coRoleText,
-                    ]}
-                  >
-                    {t.es_tutor_principal ? 'Principal' : 'Cotutor'}
-                  </Text>
-                </View>
-              </View>
-            ))
-          ) : (
-            <Text style={styles.emptySmall}>Tutor registrado.</Text>
-          )}
-
-          <View style={styles.addTutorRow}>
-            <TextInput
-              style={styles.tutorInput}
-              placeholder="Correo de familiar registrado..."
-              placeholderTextColor="#8B9899"
-              value={coTutorEmail}
-              onChangeText={setCoTutorEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
             />
-            <TouchableOpacity
-              style={styles.addTutorBtn}
-              onPress={handleAddTutor}
-              disabled={addingTutor}
-            >
-              {addingTutor ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={styles.addTutorBtnText}>Asociar</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {tutorFeedback ? (
-            <Text
-              style={
-                tutorFeedback.type === 'ok' ? styles.feedbackOk : styles.feedbackErr
-              }
-            >
-              {tutorFeedback.text}
-            </Text>
-          ) : null}
-        </View>
-
-        <View style={styles.actionsColumn}>
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => navigation.navigate('PetForm', { petId: pet.id })}
-          >
-            <Text style={styles.editButtonText}>Editar datos de la mascota</Text>
-          </TouchableOpacity>
-
-          {!confirmingDelete ? (
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={() => setConfirmingDelete(true)}
-            >
-              <Text style={styles.deleteButtonText}>Eliminar mascota</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.confirmBox}>
-              <Text style={styles.confirmText}>
-                ¿Confirmas que deseas eliminar la ficha de {pet.nombre}?
-              </Text>
-              <View style={styles.confirmBtnsRow}>
-                <TouchableOpacity
-                  style={styles.confirmYesBtn}
-                  onPress={handleDelete}
-                  disabled={deleting}
-                >
-                  {deleting ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.confirmYesText}>Sí, eliminar</Text>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.confirmNoBtn}
-                  onPress={() => setConfirmingDelete(false)}
-                  disabled={deleting}
-                >
-                  <Text style={styles.confirmNoText}>Cancelar</Text>
-                </TouchableOpacity>
+            <View style={styles.heroRow}>
+              <Avatar name={pet.nombre} size={96} />
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text accessibilityRole="header" numberOfLines={2} style={[t.petName, { color: colors.onTeal }]}>
+                  {pet.nombre}
+                </Text>
+                <Text style={[t.body, { color: colors.onTealSoft }]}>
+                  {breed} · {sexLabel} · {formatPetAge(pet.fecha_nacimiento)}
+                </Text>
               </View>
             </View>
-          )}
+          </View>
 
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => navigation.navigate('Pets')}
-          >
-            <Text style={styles.secondaryButtonText}>Volver a Mis mascotas</Text>
-          </TouchableOpacity>
+          <View style={styles.body}>
+            {errorMessage ? <ErrorBox message={errorMessage} /> : null}
+
+            {/* Protagonista */}
+            {hasDoses && next ? (
+              <Pressable
+                onPress={() => setSelectedRecord(next.rec)}
+                accessibilityRole="button"
+                accessibilityLabel={`${next.days < 0 ? 'Refuerzo vencido' : 'Próximo refuerzo'}: ${next.rec.tratamiento_nombre}, ${formatDateLong(next.rec.fecha_proximo_refuerzo)}`}
+                style={({ pressed }) => [styles.floatCard, pressed && { opacity: 0.92 }]}
+              >
+                <View style={styles.nextTop}>
+                  <Text style={[t.label, { color: colors.inkSoft, flex: 1 }]}>
+                    {next.days < 0 ? 'Refuerzo vencido' : 'Próximo refuerzo'}
+                  </Text>
+                  <StatusPill
+                    status={toStatusKey(getBoosterStatus(next.rec.fecha_proximo_refuerzo).status)}
+                    label={statusLabel(
+                      toStatusKey(getBoosterStatus(next.rec.fecha_proximo_refuerzo).status),
+                      next.days
+                    )}
+                  />
+                </View>
+                <Text style={[t.midDate, { color: colors.ink }]}>
+                  {formatDateLong(next.rec.fecha_proximo_refuerzo)}
+                </Text>
+                <View style={styles.nextBottom}>
+                  <CategoryIcon categoria={next.rec.tratamiento_categoria} size={36} />
+                  <View style={{ flex: 1 }}>
+                    <Text numberOfLines={1} style={[t.rowTitle, { color: colors.ink }]}>
+                      {next.rec.tratamiento_nombre}
+                    </Text>
+                    <Text style={[t.small, { color: colors.inkSoft }]}>
+                      {formatRelativeDays(next.days)}
+                    </Text>
+                  </View>
+                </View>
+              </Pressable>
+            ) : (
+              <View style={styles.floatCard}>
+                <View style={styles.emptyRow}>
+                  <CategoryIcon categoria="vacuna" size={44} />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={[t.cardTitle, { color: colors.ink }]}>
+                      {hasDoses ? 'Sin refuerzos pendientes' : 'Sin dosis registradas'}
+                    </Text>
+                    <Text style={[t.small, { color: colors.inkSoft }]}>
+                      {hasDoses
+                        ? 'Las dosis registradas no tienen fecha de refuerzo.'
+                        : 'Anota la primera y te avisamos cuándo toca la siguiente.'}
+                    </Text>
+                  </View>
+                </View>
+                <PrimaryButton
+                  label="Registrar dosis"
+                  onPress={goToNewDose}
+                  icon={<IconPlus color={colors.onTeal} size={20} />}
+                  style={{ height: 52, borderRadius: 16 }}
+                />
+              </View>
+            )}
+
+            {/* Carnet con dosis */}
+            {hasDoses ? (
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Text style={[t.cardTitle, { color: colors.ink, flex: 1 }]}>Carnet sanitario</Text>
+                  <TextButton
+                    label="Registrar dosis"
+                    onPress={goToNewDose}
+                    icon={<IconPlus color={colors.teal} size={18} />}
+                  />
+                </View>
+                {sortedTreatments.map((rec, index) => {
+                  const isLatest = latestIds.has(rec.id);
+                  const days = rec.fecha_proximo_refuerzo ? daysFromToday(rec.fecha_proximo_refuerzo) : null;
+                  const key: StatusKey = isLatest
+                    ? toStatusKey(getBoosterStatus(rec.fecha_proximo_refuerzo).status)
+                    : 'sin_fecha';
+                  const label = isLatest ? statusLabel(key, days) : 'Anterior';
+                  return (
+                    <Pressable
+                      key={rec.id}
+                      onPress={() => setSelectedRecord(rec)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${rec.tratamiento_nombre}, aplicada ${formatDateLong(rec.fecha_aplicacion)}, ${label}`}
+                      style={({ pressed }) => [
+                        styles.doseRow,
+                        index > 0 && styles.doseRowDivider,
+                        pressed && { backgroundColor: colors.mintSelected },
+                      ]}
+                    >
+                      <CategoryIcon categoria={rec.tratamiento_categoria} size={40} />
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text numberOfLines={1} style={[t.rowTitle, { color: colors.ink }]}>
+                          {rec.tratamiento_nombre}
+                        </Text>
+                        <Text style={[t.small, { color: colors.inkSoft }]}>
+                          Aplicada {formatDateLong(rec.fecha_aplicacion)}
+                        </Text>
+                      </View>
+                      <StatusPill status={key} label={label} />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+
+            {/* Datos */}
+            <View style={styles.tiles}>
+              <Tile label="Nació" value={formatDateLong(pet.fecha_nacimiento)} />
+              <Tile label={sterilized} value={pet.esterilizado ? 'Sí' : 'No'} />
+              <Tile label="Microchip" value={pet.numero_chip ? 'Registrado' : 'Sin chip'} />
+            </View>
+            {pet.numero_chip ? (
+              <Text style={[t.small, { color: colors.inkSoft, marginTop: -4, paddingHorizontal: 4 }]}>
+                Número de chip: {pet.numero_chip}
+              </Text>
+            ) : null}
+
+            {/* Calendario */}
+            <Pressable
+              onPress={() => navigation.navigate('Calendar')}
+              accessibilityRole="button"
+              accessibilityLabel="Calendario de refuerzos"
+              style={({ pressed }) => [styles.linkRow, pressed && { opacity: 0.85 }]}
+            >
+              <View style={styles.linkIcon}>
+                <IconCalendar size={20} color={colors.ink} />
+              </View>
+              <Text style={[t.rowTitle, { color: colors.ink, flex: 1, fontFamily: fonts.textMedium }]}>
+                Calendario de refuerzos
+              </Text>
+              <IconChevronRight color={colors.inkSoft} size={20} />
+            </Pressable>
+
+            {/* Tutores */}
+            <View style={styles.card}>
+              {pet.tutores && pet.tutores.length > 0 ? (
+                pet.tutores.map((tutor, index) => (
+                  <View key={tutor.id} style={[styles.tutorRow, index > 0 && styles.tutorDivider]}>
+                    <View style={styles.tutorAvatar}>
+                      <Text style={{ fontFamily: fonts.display, fontSize: 16, color: colors.teal }}>
+                        {initials(tutor.nombre_completo)}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text numberOfLines={1} style={[t.rowTitle, { color: colors.ink }]}>
+                        {tutor.nombre_completo}
+                      </Text>
+                      <Text style={[t.small, { color: colors.inkSoft }]}>
+                        {tutor.es_tutor_principal ? 'Tutor principal' : 'Cotutor'}
+                      </Text>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <Text style={[t.body, { color: colors.inkSoft }]}>Tutor registrado.</Text>
+              )}
+
+              <View style={styles.inviteDivider} />
+
+              {showInvite ? (
+                <View style={{ gap: 10 }}>
+                  <View style={styles.inviteRow}>
+                    <TextInput
+                      style={styles.inviteInput}
+                      placeholder="Correo de tu familiar"
+                      placeholderTextColor={colors.placeholder}
+                      accessibilityLabel="Correo de tu familiar registrado"
+                      value={coTutorEmail}
+                      onChangeText={setCoTutorEmail}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      keyboardType="email-address"
+                    />
+                    <PrimaryButton
+                      label="Asociar"
+                      onPress={handleAddTutor}
+                      loading={addingTutor}
+                      style={{ height: 52, borderRadius: 16, paddingHorizontal: 18 }}
+                    />
+                  </View>
+                  {tutorFeedback ? (
+                    <Text
+                      style={[
+                        t.small,
+                        {
+                          fontFamily: fonts.textSemi,
+                          color: tutorFeedback.type === 'ok' ? colors.teal : colors.danger,
+                        },
+                      ]}
+                    >
+                      {tutorFeedback.text}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : (
+                <TextButton
+                  label="Invitar a un familiar"
+                  onPress={() => setShowInvite(true)}
+                  icon={<IconPlus color={colors.teal} size={18} />}
+                />
+              )}
+            </View>
+          </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+
+      {/* Menú ⋯ */}
+      <PopoverMenu
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        items={[
+          {
+            label: 'Editar datos',
+            onPress: () => {
+              setMenuOpen(false);
+              navigation.navigate('PetForm', { petId: pet.id });
+            },
+          },
+          {
+            label: 'Eliminar mascota',
+            danger: true,
+            onPress: () => {
+              setMenuOpen(false);
+              setTimeout(() => setConfirmDeletePet(true), 300);
+            },
+          },
+        ]}
+      />
+
+      {/* Confirmar eliminar mascota */}
+      <BottomSheet
+        visible={confirmDeletePet}
+        onClose={() => (deleting ? undefined : setConfirmDeletePet(false))}
+        title={`¿Eliminar a ${pet.nombre}?`}
+      >
+        <View style={{ gap: 16, paddingTop: 4 }}>
+          <Text style={[t.body, { color: colors.inkSoft }]}>
+            Se borra su ficha y todo su carnet sanitario. No se puede deshacer.
+          </Text>
+          <GhostButton
+            label={deleting ? 'Eliminando…' : 'Sí, eliminar'}
+            tone="danger"
+            onPress={handleDeletePet}
+            disabled={deleting}
+            style={{ height: 52, borderRadius: radii.button }}
+          />
+          <GhostButton
+            label="Cancelar"
+            onPress={() => setConfirmDeletePet(false)}
+            disabled={deleting}
+            style={{ height: 52, borderRadius: radii.button, borderColor: colors.line }}
+          />
+        </View>
+      </BottomSheet>
+
+      {/* Detalle de dosis */}
+      <BottomSheet
+        visible={selectedRecord !== null}
+        onClose={() => {
+          setSelectedRecord(null);
+          setConfirmingRecord(false);
+        }}
+        title={
+          selectedRecord
+            ? confirmingRecord
+              ? '¿Eliminar esta dosis?'
+              : selectedRecord.tratamiento_nombre
+            : undefined
+        }
+      >
+        {selectedRecord ? (
+          confirmingRecord ? (
+            <View style={{ gap: 16, paddingTop: 4 }}>
+              <Text style={[t.body, { color: colors.inkSoft }]}>
+                {selectedRecord.tratamiento_nombre}, aplicada el{' '}
+                {formatDateLong(selectedRecord.fecha_aplicacion)}. Se quita del carnet de {pet.nombre}.
+              </Text>
+              <GhostButton
+                label={deletingRecordId === selectedRecord.id ? 'Eliminando…' : 'Sí, eliminar'}
+                tone="danger"
+                onPress={() => handleDeleteTreatment(selectedRecord)}
+                disabled={deletingRecordId === selectedRecord.id}
+                style={{ height: 52, borderRadius: radii.button }}
+              />
+              <GhostButton
+                label="Cancelar"
+                onPress={() => setConfirmingRecord(false)}
+                style={{ height: 52, borderRadius: radii.button, borderColor: colors.line }}
+              />
+            </View>
+          ) : (
+            <View style={{ gap: 14, paddingTop: 4 }}>
+              <DetailLine label="Aplicada" value={formatDateLong(selectedRecord.fecha_aplicacion)} />
+              {selectedRecord.fecha_proximo_refuerzo ? (
+                <DetailLine
+                  label="Próximo refuerzo"
+                  value={formatDateLong(selectedRecord.fecha_proximo_refuerzo)}
+                />
+              ) : null}
+              {selectedRecord.veterinaria_nombre ? (
+                <DetailLine label="Clínica" value={selectedRecord.veterinaria_nombre} />
+              ) : null}
+              {selectedRecord.lote_producto ? (
+                <DetailLine label="Lote o marca" value={selectedRecord.lote_producto} />
+              ) : null}
+              {selectedRecord.notas ? <DetailLine label="Notas" value={selectedRecord.notas} /> : null}
+              <View style={{ flexDirection: 'row', gap: 10, paddingTop: 6 }}>
+                <GhostButton
+                  label="Editar"
+                  onPress={() => goToEditDose(selectedRecord)}
+                  style={{ flex: 1, height: 52, borderRadius: radii.button }}
+                />
+                <GhostButton
+                  label="Eliminar"
+                  tone="danger"
+                  onPress={() => setConfirmingRecord(true)}
+                  style={{ flex: 1, height: 52, borderRadius: radii.button }}
+                />
+              </View>
+            </View>
+          )
+        ) : null}
+      </BottomSheet>
+    </View>
+  );
+}
+
+function DetailLine({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={{ gap: 2 }}>
+      <Text style={[t.tiny, { color: colors.inkSoft }]}>{label}</Text>
+      <Text style={[t.body, { color: colors.ink }]}>{value}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  centerContainer: {
+  screen: {
     flex: 1,
-    backgroundColor: '#F6F3EC',
+    backgroundColor: colors.ground,
+  },
+  center: {
+    flex: 1,
+    backgroundColor: colors.ground,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#526466',
+  errorWrap: {
+    width: '100%',
+    maxWidth: 420,
+    gap: 16,
   },
-  scrollContainer: {
+  scrollContent: {
     flexGrow: 1,
-    backgroundColor: '#F6F3EC',
-    alignItems: 'center',
-    padding: 20,
+    backgroundColor: colors.ground,
   },
-  card: {
+  column: {
     width: '100%',
     maxWidth: 480,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
-    padding: 24,
+    alignSelf: 'center',
   },
-  headerRow: {
+  hero: {
+    backgroundColor: colors.teal,
+    borderBottomLeftRadius: radii.hero,
+    borderBottomRightRadius: radii.hero,
+    paddingBottom: 60,
+  },
+  heroRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    gap: 18,
+    paddingHorizontal: 20,
+    paddingTop: 4,
   },
-  avatarCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    backgroundColor: '#E6CFA8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  avatarInitial: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#0E5A60',
-  },
-  headerInfo: {
-    flex: 1,
-  },
-  speciesSubtitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#526466',
-    marginBottom: 2,
-  },
-  petName: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#14282A',
-    letterSpacing: -0.3,
-  },
-  ageHighlight: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#0E5A60',
-    marginTop: 2,
-  },
-  errorBox: {
-    backgroundColor: '#FDF2F2',
-    borderWidth: 1,
-    borderColor: '#F5C2C0',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: '#A61B1B',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  errorTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#A61B1B',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  infoGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    backgroundColor: '#FAF8F4',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
-    padding: 14,
-    marginBottom: 20,
+  body: {
+    marginTop: -40,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
     gap: 12,
   },
-  infoItem: {
-    width: '47%',
+  floatCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    padding: 20,
+    gap: 16,
+    ...floatingShadow,
   },
-  infoLabel: {
-    fontSize: 12,
-    color: '#526466',
-    marginBottom: 2,
+  emptyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#14282A',
+  nextTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  sectionBox: {
-    backgroundColor: '#FAF8F4',
+  nextBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.row,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  doseRow: {
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+  },
+  doseRowDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.divider,
+  },
+  tiles: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  linkRow: {
+    minHeight: 60,
+    backgroundColor: colors.surface,
+    borderRadius: radii.row,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  linkIcon: {
+    width: 36,
+    height: 36,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
-    padding: 16,
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#14282A',
-    marginBottom: 12,
+    backgroundColor: colors.ball,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tutorRow: {
+    minHeight: 64,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E4DDD0',
+    gap: 12,
+    paddingVertical: 10,
   },
-  tutorInfo: {
-    flex: 1,
+  tutorDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.divider,
   },
-  tutorName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#14282A',
+  tutorAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.mint,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  tutorEmail: {
-    fontSize: 12,
-    color: '#526466',
-  },
-  roleBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  primaryRoleBadge: {
-    backgroundColor: '#E4F0F1',
-  },
-  coRoleBadge: {
-    backgroundColor: '#F3E7D3',
-  },
-  roleBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  primaryRoleText: {
-    color: '#0E5A60',
-  },
-  coRoleText: {
-    color: '#7A541E',
-  },
-  emptySmall: {
-    fontSize: 13,
-    color: '#526466',
+  inviteDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.divider,
     marginBottom: 8,
   },
-  addTutorRow: {
+  inviteRow: {
     flexDirection: 'row',
-    marginTop: 12,
     gap: 8,
+    alignItems: 'center',
+    paddingBottom: 4,
   },
-  tutorInput: {
+  inviteInput: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D8CFC0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 13,
-    color: '#14282A',
-  },
-  addTutorBtn: {
-    backgroundColor: '#0E5A60',
-    borderRadius: 8,
+    minHeight: 52,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
     paddingHorizontal: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addTutorBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  feedbackOk: {
-    marginTop: 8,
-    fontSize: 12,
-    color: '#0E5A60',
-    fontWeight: '600',
-  },
-  feedbackErr: {
-    marginTop: 8,
-    fontSize: 12,
-    color: '#A61B1B',
-    fontWeight: '600',
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitleNoMargin: {
+    fontFamily: fonts.text,
     fontSize: 15,
-    fontWeight: '700',
-    color: '#14282A',
-  },
-  addDoseButton: {
-    backgroundColor: '#0E5A60',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-  },
-  addDoseButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  doseCard: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
-  },
-  doseTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 6,
-  },
-  catBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  catVacuna: {
-    backgroundColor: '#E4F0F1',
-  },
-  catInterna: {
-    backgroundColor: '#F3E7D3',
-  },
-  catExterna: {
-    backgroundColor: '#E8F3E8',
-  },
-  catBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  catVacunaText: {
-    color: '#0E5A60',
-  },
-  catInternaText: {
-    color: '#7A541E',
-  },
-  catExternaText: {
-    color: '#1E5E3A',
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  statusVencido: {
-    backgroundColor: '#FDE8E8',
-  },
-  statusProximo: {
-    backgroundColor: '#FEF3C7',
-  },
-  statusAlDia: {
-    backgroundColor: '#DCFCE7',
-  },
-  statusSinFecha: {
-    backgroundColor: '#EFECE6',
-  },
-  statusBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  statusVencidoText: {
-    color: '#A61B1B',
-  },
-  statusProximoText: {
-    color: '#9A4A06',
-  },
-  statusAlDiaText: {
-    color: '#14532D',
-  },
-  statusSinFechaText: {
-    color: '#526466',
-  },
-  doseTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#14282A',
-    marginBottom: 6,
-  },
-  doseDatesRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  doseDateText: {
-    fontSize: 12,
-    color: '#2A3F41',
-    fontWeight: '500',
-  },
-  doseMetaText: {
-    fontSize: 12,
-    color: '#526466',
-    marginTop: 2,
-  },
-  doseActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#EFECE6',
-  },
-  doseEditBtn: {
-    backgroundColor: '#E4F0F1',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-  },
-  doseEditBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#0E5A60',
-  },
-  doseDeleteBtn: {
-    backgroundColor: '#FDF2F2',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-  },
-  doseDeleteBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#A61B1B',
-  },
-  calendarLinkBtn: {
-    marginTop: 4,
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  calendarLinkText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0E5A60',
-  },
-  actionsColumn: {
-    gap: 10,
-  },
-  editButton: {
-    width: '100%',
-    backgroundColor: '#0E5A60',
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  editButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  deleteButton: {
-    width: '100%',
-    backgroundColor: '#FDF2F2',
-    borderWidth: 1,
-    borderColor: '#F5C2C0',
-    paddingVertical: 13,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  deleteButtonText: {
-    color: '#A61B1B',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  confirmBox: {
-    backgroundColor: '#FDF2F2',
-    borderWidth: 1,
-    borderColor: '#F5C2C0',
-    borderRadius: 10,
-    padding: 14,
-  },
-  confirmText: {
-    fontSize: 13,
-    color: '#881313',
-    fontWeight: '600',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  confirmBtnsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  confirmYesBtn: {
-    flex: 1,
-    backgroundColor: '#A61B1B',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  confirmYesText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  confirmNoBtn: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D8CFC0',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  confirmNoText: {
-    color: '#2A3F41',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    width: '100%',
-    backgroundColor: '#FAF8F4',
-    borderWidth: 1,
-    borderColor: '#E4DDD0',
-    paddingVertical: 13,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    color: '#526466',
-    fontSize: 14,
-    fontWeight: '600',
+    color: colors.ink,
   },
 });

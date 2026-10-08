@@ -178,7 +178,7 @@ export default function PetFormScreen({ navigation, route }: PetFormScreenProps)
   if (loadingInitial) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color="#0E5A60" />
         <Text style={styles.loadingText}>Cargando formulario...</Text>
       </View>
     );
@@ -191,14 +191,8 @@ export default function PetFormScreen({ navigation, route }: PetFormScreenProps)
     >
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>
-              {isEditing ? 'EDITAR FICHA' : 'NUEVA MASCOTA'}
-            </Text>
-          </View>
-
           <Text style={styles.title}>
-            {isEditing ? 'Editar Mascota' : 'Registrar Mascota'}
+            {isEditing ? 'Editar mascota' : 'Registrar mascota'}
           </Text>
           <Text style={styles.subtitle}>
             Completa los datos básicos para llevar el control sanitario y calendario de tu mascota.
@@ -215,7 +209,7 @@ export default function PetFormScreen({ navigation, route }: PetFormScreenProps)
             <TextInput
               style={styles.input}
               placeholder="Ej. Pelusa, Max, Luna"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#8B9899"
               value={nombre}
               onChangeText={setNombre}
               editable={!saving}
@@ -269,7 +263,7 @@ export default function PetFormScreen({ navigation, route }: PetFormScreenProps)
             <TextInput
               style={styles.input}
               placeholder="Ej. 2023-08-15"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#8B9899"
               value={fechaNacimiento}
               onChangeText={setFechaNacimiento}
               editable={!saving}
@@ -352,7 +346,7 @@ export default function PetFormScreen({ navigation, route }: PetFormScreenProps)
             <TextInput
               style={styles.input}
               placeholder="Ej. 900118000123456"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#8B9899"
               value={numeroChip}
               onChangeText={setNumeroChip}
               editable={!saving}
@@ -368,7 +362,7 @@ export default function PetFormScreen({ navigation, route }: PetFormScreenProps)
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={styles.buttonText}>
-                {isEditing ? 'Guardar Cambios' : 'Registrar Mascota'}
+                {isEditing ? 'Guardar cambios' : 'Registrar mascota'}
               </Text>
             )}
           </TouchableOpacity>
@@ -389,18 +383,18 @@ export default function PetFormScreen({ navigation, route }: PetFormScreenProps)
 const styles = StyleSheet.create({
   outer: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F6F3EC',
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F6F3EC',
     alignItems: 'center',
     justifyContent: 'center',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#4B5563',
+    color: '#526466',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -411,50 +405,34 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 480,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E4DDD0',
     padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#DBEAFE',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    marginBottom: 10,
-  },
-  badgeText: {
-    color: '#1D4ED8',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.5,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: '700',
+    color: '#14282A',
+    letterSpacing: -0.3,
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#526466',
     marginBottom: 20,
     lineHeight: 19,
   },
   errorBox: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#FDF2F2',
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: '#F5C2C0',
     borderRadius: 10,
     padding: 12,
     marginBottom: 16,
   },
   errorText: {
-    color: '#B91C1C',
+    color: '#A61B1B',
     fontSize: 13,
     fontWeight: '500',
   },
@@ -465,19 +443,19 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#374151',
+    color: '#2A3F41',
     marginBottom: 8,
   },
   input: {
     width: '100%',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAF8F4',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#D8CFC0',
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#111827',
+    color: '#14282A',
   },
   chipRow: {
     flexDirection: 'row',
@@ -485,24 +463,24 @@ const styles = StyleSheet.create({
   },
   choiceChip: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FAF8F4',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#D8CFC0',
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
   },
   choiceChipActive: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#2563EB',
+    backgroundColor: '#E4F0F1',
+    borderColor: '#0E5A60',
   },
   choiceChipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#4B5563',
+    color: '#526466',
   },
   choiceChipTextActive: {
-    color: '#1D4ED8',
+    color: '#0E5A60',
   },
   breedGrid: {
     flexDirection: 'row',
@@ -510,20 +488,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   breedChip: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAF8F4',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 999,
+    borderColor: '#E4DDD0',
+    borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   breedChipActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
+    backgroundColor: '#0E5A60',
+    borderColor: '#0E5A60',
   },
   breedChipText: {
     fontSize: 13,
-    color: '#374151',
+    color: '#2A3F41',
     fontWeight: '500',
   },
   breedChipTextActive: {
@@ -536,19 +514,19 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   quickDateBtn: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F3E7D3',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
   },
   quickDateText: {
     fontSize: 12,
-    color: '#2563EB',
+    color: '#0E5A60',
     fontWeight: '600',
   },
   primaryButton: {
     width: '100%',
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0E5A60',
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
@@ -560,19 +538,21 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
   },
   cancelButton: {
     width: '100%',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FAF8F4',
+    borderWidth: 1,
+    borderColor: '#E4DDD0',
     paddingVertical: 13,
     borderRadius: 10,
     alignItems: 'center',
   },
   cancelButtonText: {
-    color: '#4B5563',
-    fontSize: 15,
+    color: '#526466',
+    fontSize: 14,
     fontWeight: '600',
   },
 });

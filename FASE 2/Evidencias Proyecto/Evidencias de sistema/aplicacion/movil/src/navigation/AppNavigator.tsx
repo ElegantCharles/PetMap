@@ -18,11 +18,11 @@ export default function AppNavigator() {
       initialRouteName="Login"
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#2563EB',
+          backgroundColor: '#0E5A60',
         },
-        headerTintColor: '#FFFFFF',
+        headerTintColor: '#FAF8F4',
         headerTitleStyle: {
-          fontWeight: 'bold',
+          fontWeight: '700',
         },
       }}
     >

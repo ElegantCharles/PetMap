@@ -67,10 +67,7 @@ export default function CalendarScreen({ navigation }: CalendarScreenProps) {
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       <View style={styles.card}>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>ALERTAS SANITARIAS · S9</Text>
-        </View>
-        <Text style={styles.title}>Calendario de Refuerzos</Text>
+        <Text style={styles.title}>Calendario de refuerzos</Text>
         <Text style={styles.subtitle}>
           Próximas vacunas y desparasitaciones de todas tus mascotas ordenadas por urgencia.
         </Text>
@@ -136,7 +133,7 @@ export default function CalendarScreen({ navigation }: CalendarScreenProps) {
 
         {loading ? (
           <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color="#2563EB" />
+            <ActivityIndicator size="large" color="#0E5A60" />
             <Text style={styles.loadingText}>Consultando calendario sanitario...</Text>
           </View>
         ) : filteredEvents.length === 0 ? (
@@ -236,7 +233,7 @@ export default function CalendarScreen({ navigation }: CalendarScreenProps) {
                     }
                   >
                     <Text style={styles.openPetBtnText}>
-                      Ir al Carnet de {ev.mascota_nombre} →
+                      Ver carnet de {ev.mascota_nombre}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -249,7 +246,7 @@ export default function CalendarScreen({ navigation }: CalendarScreenProps) {
           style={styles.backButton}
           onPress={() => navigation.navigate('Pets')}
         >
-          <Text style={styles.backButtonText}>Volver a Mis Mascotas</Text>
+          <Text style={styles.backButtonText}>Volver a Mis mascotas</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -259,7 +256,7 @@ export default function CalendarScreen({ navigation }: CalendarScreenProps) {
 const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F6F3EC',
     alignItems: 'center',
     padding: 20,
   },
@@ -267,37 +264,21 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 480,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E4DDD0',
     padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    marginBottom: 10,
-  },
-  badgeText: {
-    color: '#B45309',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.5,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: '700',
+    color: '#14282A',
+    letterSpacing: -0.3,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#526466',
     marginBottom: 18,
     lineHeight: 19,
   },
@@ -308,7 +289,7 @@ const styles = StyleSheet.create({
   },
   summaryBox: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 8,
     alignItems: 'center',
@@ -316,48 +297,48 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   summaryActiveBorder: {
-    borderColor: '#111827',
+    borderColor: '#0E5A60',
   },
   summaryVencido: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#FDE8E8',
   },
   summaryProximo: {
     backgroundColor: '#FEF3C7',
   },
   summaryAlDia: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: '#DCFCE7',
   },
   summaryCountVencido: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#B91C1C',
+    color: '#A61B1B',
   },
   summaryLabelVencido: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#991B1B',
+    color: '#881313',
     marginTop: 2,
   },
   summaryCountProximo: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#B45309',
+    color: '#9A4A06',
   },
   summaryLabelProximo: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#92400E',
+    color: '#7A3A04',
     marginTop: 2,
   },
   summaryCountAlDia: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#047857',
+    color: '#14532D',
   },
   summaryLabelAlDia: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#065F46',
+    color: '#14532D',
     marginTop: 2,
   },
   clearFilterBtn: {
@@ -367,18 +348,18 @@ const styles = StyleSheet.create({
   clearFilterText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#2563EB',
+    color: '#0E5A60',
   },
   errorBox: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#FDF2F2',
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: '#F5C2C0',
     borderRadius: 10,
     padding: 12,
     marginBottom: 16,
   },
   errorText: {
-    color: '#B91C1C',
+    color: '#A61B1B',
     fontSize: 13,
     fontWeight: '500',
   },
@@ -389,12 +370,12 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 13,
-    color: '#6B7280',
+    color: '#526466',
   },
   emptyBox: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAF8F4',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E4DDD0',
     borderRadius: 12,
     padding: 20,
     marginBottom: 18,
@@ -403,12 +384,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#374151',
+    color: '#14282A',
     marginBottom: 6,
   },
   emptyText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#526466',
     textAlign: 'center',
     lineHeight: 19,
   },
@@ -417,9 +398,9 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   eventCard: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAF8F4',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E4DDD0',
     borderRadius: 12,
     padding: 14,
   },
@@ -439,66 +420,66 @@ const styles = StyleSheet.create({
   catBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 999,
+    borderRadius: 6,
   },
   catVacuna: {
-    backgroundColor: '#DBEAFE',
+    backgroundColor: '#E4F0F1',
   },
   catInterna: {
-    backgroundColor: '#F3E8FF',
+    backgroundColor: '#F3E7D3',
   },
   catExterna: {
-    backgroundColor: '#CCFBF1',
+    backgroundColor: '#E8F3E8',
   },
   catBadgeText: {
     fontSize: 10,
     fontWeight: '700',
   },
   catVacunaText: {
-    color: '#1D4ED8',
+    color: '#0E5A60',
   },
   catInternaText: {
-    color: '#6B21A8',
+    color: '#7A541E',
   },
   catExternaText: {
-    color: '#0F766E',
+    color: '#1E5E3A',
   },
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 999,
+    borderRadius: 6,
   },
   statusVencido: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#FDE8E8',
   },
   statusProximo: {
     backgroundColor: '#FEF3C7',
   },
   statusAlDia: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: '#DCFCE7',
   },
   statusBadgeText: {
     fontSize: 10,
     fontWeight: '700',
   },
   statusVencidoText: {
-    color: '#B91C1C',
+    color: '#A61B1B',
   },
   statusProximoText: {
-    color: '#B45309',
+    color: '#9A4A06',
   },
   statusAlDiaText: {
-    color: '#065F46',
+    color: '#14532D',
   },
   petChip: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#374151',
+    color: '#2A3F41',
   },
   treatmentTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: '#14282A',
     marginBottom: 8,
   },
   datesRow: {
@@ -506,7 +487,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E4DDD0',
     padding: 10,
     marginBottom: 8,
   },
@@ -515,23 +496,23 @@ const styles = StyleSheet.create({
   },
   dateLabel: {
     fontSize: 11,
-    color: '#6B7280',
+    color: '#526466',
   },
   datePrimary: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#111827',
+    color: '#14282A',
     marginTop: 2,
   },
   dateSecondary: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#4B5563',
+    color: '#2A3F41',
     marginTop: 2,
   },
   vetText: {
     fontSize: 12,
-    color: '#4B5563',
+    color: '#526466',
     marginBottom: 8,
   },
   cardActions: {
@@ -539,7 +520,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   openPetBtn: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E4F0F1',
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 8,
@@ -547,17 +528,19 @@ const styles = StyleSheet.create({
   openPetBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1D4ED8',
+    color: '#0E5A60',
   },
   backButton: {
     width: '100%',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FAF8F4',
+    borderWidth: 1,
+    borderColor: '#E4DDD0',
     paddingVertical: 13,
     borderRadius: 10,
     alignItems: 'center',
   },
   backButtonText: {
-    color: '#374151',
+    color: '#526466',
     fontSize: 14,
     fontWeight: '600',
   },

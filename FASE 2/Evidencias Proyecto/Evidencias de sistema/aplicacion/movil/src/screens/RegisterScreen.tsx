@@ -70,12 +70,9 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
     >
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>NUEVA CUENTA</Text>
-          </View>
-          <Text style={styles.title}>Crear Cuenta</Text>
+          <Text style={styles.title}>Crear cuenta</Text>
           <Text style={styles.subtitle}>
-            Registra tu perfil de tutor para gestionar el carnet y calendario de tus mascotas.
+            Registra tu perfil de tutor para llevar el carnet y calendario sanitario de tus mascotas.
           </Text>
 
           {errorMessage ? (
@@ -89,7 +86,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
             <TextInput
               style={styles.input}
               placeholder="Ej. Carlos Echeverría"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#8B9899"
               value={nombreCompleto}
               onChangeText={setNombreCompleto}
               editable={!loading}
@@ -101,7 +98,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
             <TextInput
               style={styles.input}
               placeholder="correo@ejemplo.cl"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#8B9899"
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -116,7 +113,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
             <TextInput
               style={styles.input}
               placeholder="Mínimo 8 caracteres (letras y números)"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#8B9899"
               secureTextEntry
               value={password}
               onChangeText={setPassword}
@@ -129,7 +126,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
             <TextInput
               style={styles.input}
               placeholder="Repite tu contraseña"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#8B9899"
               secureTextEntry
               value={confirmPassword}
               onChangeText={setConfirmPassword}
@@ -145,7 +142,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
             {loading ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.buttonText}>Registrarme e Ingresar</Text>
+              <Text style={styles.buttonText}>Registrarme e ingresar</Text>
             )}
           </TouchableOpacity>
 
@@ -167,7 +164,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
 const styles = StyleSheet.create({
   outer: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F6F3EC',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -179,50 +176,34 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 420,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#DBEAFE',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    marginBottom: 10,
-  },
-  badgeText: {
-    color: '#1D4ED8',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E4DDD0',
+    padding: 26,
   },
   title: {
     fontSize: 26,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: '700',
+    color: '#14282A',
+    letterSpacing: -0.3,
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#526466',
     marginBottom: 20,
     lineHeight: 20,
   },
   errorBox: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#FDF2F2',
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: '#F5C2C0',
     borderRadius: 10,
     padding: 12,
     marginBottom: 16,
   },
   errorText: {
-    color: '#B91C1C',
+    color: '#A61B1B',
     fontSize: 13,
     fontWeight: '500',
   },
@@ -233,23 +214,23 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#374151',
+    color: '#2A3F41',
     marginBottom: 6,
   },
   input: {
     width: '100%',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAF8F4',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#D8CFC0',
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#111827',
+    color: '#14282A',
   },
   primaryButton: {
     width: '100%',
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0E5A60',
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
@@ -261,8 +242,8 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
   },
   linkButton: {
     alignItems: 'center',
@@ -270,10 +251,10 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#526466',
   },
   linkHighlight: {
-    color: '#2563EB',
-    fontWeight: '600',
+    color: '#0E5A60',
+    fontWeight: '700',
   },
 });

@@ -56,24 +56,22 @@ export default function PetsScreen({ navigation }: PetsScreenProps) {
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       <View style={styles.card}>
         <View style={styles.headerTopRow}>
-          <View style={styles.statusBadge}>
-            <Text style={styles.statusBadgeText}>SESIÓN ACTIVA · JWT</Text>
+          <View style={styles.greetingBlock}>
+            <Text style={styles.title}>
+              {user ? `Hola, ${user.nombre_completo}` : 'Mis mascotas'}
+            </Text>
+            {user ? <Text style={styles.userEmail}>{user.email}</Text> : null}
           </View>
           <TouchableOpacity onPress={handleLogout} style={styles.logoutChip}>
-            <Text style={styles.logoutChipText}>Cerrar Sesión</Text>
+            <Text style={styles.logoutChipText}>Cerrar sesión</Text>
           </TouchableOpacity>
         </View>
-
-        <Text style={styles.title}>
-          {user ? `Hola, ${user.nombre_completo}` : 'Mis Mascotas'}
-        </Text>
-        {user ? <Text style={styles.userEmail}>{user.email}</Text> : null}
 
         <TouchableOpacity
           style={styles.addPetButton}
           onPress={() => navigation.navigate('PetForm')}
         >
-          <Text style={styles.addPetButtonText}>+ Registrar Nueva Mascota</Text>
+          <Text style={styles.addPetButtonText}>+ Registrar nueva mascota</Text>
         </TouchableOpacity>
 
         {errorMessage ? (
@@ -84,20 +82,20 @@ export default function PetsScreen({ navigation }: PetsScreenProps) {
 
         {loading ? (
           <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color="#2563EB" />
+            <ActivityIndicator size="large" color="#0E5A60" />
             <Text style={styles.loadingText}>Cargando tus mascotas...</Text>
           </View>
         ) : pets.length === 0 ? (
           <View style={styles.emptyBox}>
             <Text style={styles.emptyTitle}>Sin mascotas registradas todavía</Text>
             <Text style={styles.emptyText}>
-              Presiona el botón superior para crear la primera ficha médica de tu perro o gato.
+              Crea la primera ficha médica de tu perro o gato para llevar su carnet de vacunas y recordatorios.
             </Text>
           </View>
         ) : (
           <View style={styles.petList}>
             <Text style={styles.sectionHeader}>
-              Tus Mascotas ({pets.length})
+              Tus mascotas ({pets.length})
             </Text>
             {pets.map((pet) => (
               <TouchableOpacity
@@ -118,14 +116,14 @@ export default function PetsScreen({ navigation }: PetsScreenProps) {
                     </View>
                   </View>
                   <Text style={styles.petBreed}>
-                    {pet.raza_nombre || 'Mestizo'} · {pet.sexo === 'macho' ? 'Macho' : 'Hembra'}
+                    {pet.raza_nombre || 'Mestizo'}, {pet.sexo === 'macho' ? 'macho' : 'hembra'}
                   </Text>
                   <Text style={styles.petAge}>
-                    Edad: {formatPetAge(pet.fecha_nacimiento)}
+                    {formatPetAge(pet.fecha_nacimiento)}
                   </Text>
                 </View>
                 <View style={styles.viewDetailBadge}>
-                  <Text style={styles.viewDetailText}>Ficha →</Text>
+                  <Text style={styles.viewDetailText}>Ver ficha</Text>
                 </View>
               </TouchableOpacity>
             ))}
@@ -137,7 +135,7 @@ export default function PetsScreen({ navigation }: PetsScreenProps) {
           onPress={() => navigation.navigate('Calendar')}
         >
           <Text style={styles.calendarButtonText}>
-            Calendario de Vacunas y Refuerzos
+            Calendario de vacunas y refuerzos
           </Text>
         </TouchableOpacity>
 
@@ -145,13 +143,8 @@ export default function PetsScreen({ navigation }: PetsScreenProps) {
           style={styles.mapButton}
           onPress={() => navigation.navigate('Map')}
         >
-          <Text style={styles.mapButtonText}>Explorar Mapa Veterinario</Text>
+          <Text style={styles.mapButtonText}>Explorar mapa veterinario</Text>
         </TouchableOpacity>
-      </View>
-
-      <View style={styles.footer}>
-        <Text style={styles.footerLabel}>API conectada en:</Text>
-        <Text style={styles.footerValue}>{API_CONFIG.BASE_URL}</Text>
       </View>
     </ScrollView>
   );
@@ -160,7 +153,7 @@ export default function PetsScreen({ navigation }: PetsScreenProps) {
 const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F6F3EC',
     alignItems: 'center',
     padding: 20,
   },
@@ -168,57 +161,48 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 480,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E4DDD0',
     padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
   },
   headerTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: 18,
+    gap: 12,
   },
-  statusBadge: {
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  statusBadgeText: {
-    color: '#065F46',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+  greetingBlock: {
+    flex: 1,
   },
   logoutChip: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#FAF8F4',
+    borderWidth: 1,
+    borderColor: '#E4DDD0',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 999,
+    borderRadius: 8,
   },
   logoutChipText: {
-    color: '#B91C1C',
+    color: '#526466',
     fontSize: 12,
     fontWeight: '600',
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: '700',
+    color: '#14282A',
+    letterSpacing: -0.3,
     marginBottom: 2,
   },
   userEmail: {
     fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 18,
+    color: '#526466',
   },
   addPetButton: {
     width: '100%',
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0E5A60',
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
@@ -230,15 +214,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   errorBox: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#FDF2F2',
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: '#F5C2C0',
     borderRadius: 10,
     padding: 12,
     marginBottom: 16,
   },
   errorText: {
-    color: '#B91C1C',
+    color: '#A61B1B',
     fontSize: 13,
     fontWeight: '500',
   },
@@ -249,13 +233,13 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 13,
-    color: '#6B7280',
+    color: '#526466',
   },
   emptyBox: {
     width: '100%',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAF8F4',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E4DDD0',
     borderRadius: 12,
     padding: 20,
     marginBottom: 18,
@@ -264,12 +248,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#374151',
+    color: '#14282A',
     marginBottom: 6,
   },
   emptyText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#526466',
     textAlign: 'center',
     lineHeight: 19,
   },
@@ -281,31 +265,31 @@ const styles = StyleSheet.create({
   sectionHeader: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#374151',
+    color: '#2A3F41',
     marginBottom: 4,
   },
   petCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAF8F4',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E4DDD0',
     borderRadius: 12,
     padding: 14,
   },
   petAvatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
-    backgroundColor: '#DBEAFE',
+    borderRadius: 14,
+    backgroundColor: '#E6CFA8',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   petAvatarText: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1D4ED8',
+    fontWeight: '800',
+    color: '#0E5A60',
   },
   petInfo: {
     flex: 1,
@@ -319,31 +303,31 @@ const styles = StyleSheet.create({
   petName: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: '#14282A',
   },
   speciesTag: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E4F0F1',
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 999,
+    borderRadius: 6,
   },
   speciesTagText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#2563EB',
+    color: '#0E5A60',
   },
   petBreed: {
     fontSize: 13,
-    color: '#4B5563',
+    color: '#526466',
   },
   petAge: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#059669',
+    color: '#0E5A60',
     marginTop: 2,
   },
   viewDetailBadge: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E4F0F1',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
@@ -351,45 +335,35 @@ const styles = StyleSheet.create({
   viewDetailText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1D4ED8',
+    color: '#0E5A60',
   },
   calendarButton: {
     width: '100%',
-    backgroundColor: '#D97706',
-    paddingVertical: 14,
+    backgroundColor: '#F3E7D3',
+    borderWidth: 1,
+    borderColor: '#E2C9A0',
+    paddingVertical: 13,
     borderRadius: 10,
     alignItems: 'center',
     marginBottom: 10,
   },
   calendarButtonText: {
-    color: '#FFFFFF',
+    color: '#0E5A60',
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   mapButton: {
     width: '100%',
-    backgroundColor: '#059669',
-    paddingVertical: 14,
+    backgroundColor: '#FAF8F4',
+    borderWidth: 1,
+    borderColor: '#E4DDD0',
+    paddingVertical: 13,
     borderRadius: 10,
     alignItems: 'center',
   },
   mapButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
+    color: '#2A3F41',
+    fontSize: 14,
     fontWeight: '600',
-  },
-  footer: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  footerLabel: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  footerValue: {
-    fontSize: 12,
-    color: '#4B5563',
-    fontWeight: '500',
-    marginTop: 2,
   },
 });

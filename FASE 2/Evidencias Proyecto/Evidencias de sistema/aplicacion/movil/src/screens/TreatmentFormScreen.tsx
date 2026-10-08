@@ -193,7 +193,7 @@ export default function TreatmentFormScreen({
   if (initialLoading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color="#0E5A60" />
         <Text style={styles.loadingText}>Cargando catálogo sanitario...</Text>
       </View>
     );
@@ -202,11 +202,9 @@ export default function TreatmentFormScreen({
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       <View style={styles.card}>
-        <View style={styles.petTag}>
-          <Text style={styles.petTagText}>CARNET DE {petName.toUpperCase()}</Text>
-        </View>
+        <Text style={styles.petContext}>Carnet de {petName}</Text>
         <Text style={styles.title}>
-          {isEditing ? 'Editar Dosis Registrada' : 'Registrar Vacuna o Desparasitación'}
+          {isEditing ? 'Editar dosis registrada' : 'Registrar vacuna o desparasitación'}
         </Text>
         <Text style={styles.subtitle}>
           Selecciona el tratamiento aplicado; calcularemos automáticamente la fecha sugerida del próximo refuerzo.
@@ -219,7 +217,7 @@ export default function TreatmentFormScreen({
         ) : null}
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Filtrar por Categoría</Text>
+          <Text style={styles.label}>Filtrar por categoría</Text>
           <View style={styles.filterRow}>
             {(
               [
@@ -251,7 +249,7 @@ export default function TreatmentFormScreen({
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Tratamiento del Catálogo *</Text>
+          <Text style={styles.label}>Vacuna o antiparasitario *</Text>
           <View style={styles.treatmentList}>
             {filteredCatalog.map((item) => {
               const selected = item.id === selectedTreatmentId;
@@ -312,11 +310,11 @@ export default function TreatmentFormScreen({
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Fecha de Aplicación (AAAA-MM-DD) *</Text>
+          <Text style={styles.label}>Fecha de aplicación (AAAA-MM-DD) *</Text>
           <TextInput
             style={styles.input}
             placeholder="Ej. 2026-10-08"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#8B9899"
             value={fechaAplicacion}
             onChangeText={handleChangeFechaAplicacion}
           />
@@ -324,7 +322,7 @@ export default function TreatmentFormScreen({
 
         <View style={styles.fieldGroup}>
           <View style={styles.boosterLabelRow}>
-            <Text style={styles.label}>Fecha Próximo Refuerzo (AAAA-MM-DD)</Text>
+            <Text style={styles.label}>Fecha próximo refuerzo (AAAA-MM-DD)</Text>
             {selectedTreatment?.intervalo_refuerzo_dias ? (
               <TouchableOpacity onPress={handleRecalculateSuggestion}>
                 <Text style={styles.recalcLink}>Recalcular (+{selectedTreatment.intervalo_refuerzo_dias}d)</Text>
@@ -334,7 +332,7 @@ export default function TreatmentFormScreen({
           <TextInput
             style={styles.input}
             placeholder="Calculada automáticamente o edítala"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#8B9899"
             value={fechaProximoRefuerzo}
             onChangeText={handleChangeBoosterManual}
           />
@@ -344,33 +342,33 @@ export default function TreatmentFormScreen({
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Veterinaria o Clínica (opcional)</Text>
+          <Text style={styles.label}>Veterinaria o clínica (opcional)</Text>
           <TextInput
             style={styles.input}
             placeholder="Ej. Clínica Veterinaria Providencia"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#8B9899"
             value={veterinariaNombre}
             onChangeText={setVeterinariaNombre}
           />
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Lote o Marca del Producto (opcional)</Text>
+          <Text style={styles.label}>Lote o marca del producto (opcional)</Text>
           <TextInput
             style={styles.input}
             placeholder="Ej. Nobivac Lote A492"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#8B9899"
             value={loteProducto}
             onChangeText={setLoteProducto}
           />
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Notas u Observaciones (opcional)</Text>
+          <Text style={styles.label}>Notas u observaciones (opcional)</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             placeholder="Ej. Sin reacciones adversas, peso control 12.4 kg"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#8B9899"
             value={notas}
             onChangeText={setNotas}
             multiline
@@ -386,7 +384,7 @@ export default function TreatmentFormScreen({
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <Text style={styles.primaryButtonText}>
-              {isEditing ? 'Guardar Cambios' : 'Registrar en el Carnet'}
+              {isEditing ? 'Guardar cambios' : 'Registrar en el carnet'}
             </Text>
           )}
         </TouchableOpacity>
@@ -406,7 +404,7 @@ export default function TreatmentFormScreen({
 const styles = StyleSheet.create({
   centerContainer: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F6F3EC',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -414,11 +412,11 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#4B5563',
+    color: '#526466',
   },
   scrollContainer: {
     flexGrow: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F6F3EC',
     alignItems: 'center',
     padding: 20,
   },
@@ -426,49 +424,40 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 480,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E4DDD0',
     padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
   },
-  petTag: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    marginBottom: 8,
-  },
-  petTagText: {
-    fontSize: 11,
+  petContext: {
+    fontSize: 13,
     fontWeight: '700',
-    color: '#2563EB',
+    color: '#0E5A60',
+    marginBottom: 4,
   },
   title: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: '700',
+    color: '#14282A',
+    letterSpacing: -0.3,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#526466',
     marginBottom: 18,
     lineHeight: 19,
   },
   errorBox: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#FDF2F2',
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: '#F5C2C0',
     borderRadius: 10,
     padding: 12,
     marginBottom: 16,
   },
   errorText: {
-    color: '#B91C1C',
+    color: '#A61B1B',
     fontSize: 13,
     fontWeight: '500',
   },
@@ -478,7 +467,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#374151',
+    color: '#2A3F41',
     marginBottom: 6,
   },
   filterRow: {
@@ -489,36 +478,36 @@ const styles = StyleSheet.create({
   filterChip: {
     paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: 999,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    backgroundColor: '#F9FAFB',
+    borderColor: '#D8CFC0',
+    backgroundColor: '#FAF8F4',
   },
   filterChipActive: {
-    borderColor: '#2563EB',
-    backgroundColor: '#EFF6FF',
+    borderColor: '#0E5A60',
+    backgroundColor: '#E4F0F1',
   },
   filterChipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#4B5563',
+    color: '#526466',
   },
   filterChipTextActive: {
-    color: '#1D4ED8',
+    color: '#0E5A60',
   },
   treatmentList: {
     gap: 8,
   },
   treatmentOption: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
+    borderColor: '#E4DDD0',
+    backgroundColor: '#FAF8F4',
     borderRadius: 10,
     padding: 12,
   },
   treatmentOptionSelected: {
-    borderColor: '#2563EB',
-    backgroundColor: '#EFF6FF',
+    borderColor: '#0E5A60',
+    backgroundColor: '#E4F0F1',
   },
   treatmentHeader: {
     flexDirection: 'row',
@@ -530,58 +519,58 @@ const styles = StyleSheet.create({
   treatmentName: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#14282A',
     flex: 1,
   },
   treatmentNameSelected: {
-    color: '#1D4ED8',
+    color: '#0E5A60',
   },
   catBadge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 999,
+    borderRadius: 6,
   },
   catVacuna: {
-    backgroundColor: '#DBEAFE',
+    backgroundColor: '#FFFFFF',
   },
   catInterna: {
-    backgroundColor: '#F3E8FF',
+    backgroundColor: '#F3E7D3',
   },
   catExterna: {
-    backgroundColor: '#CCFBF1',
+    backgroundColor: '#E8F3E8',
   },
   catBadgeText: {
     fontSize: 10,
     fontWeight: '700',
   },
   catVacunaText: {
-    color: '#1D4ED8',
+    color: '#0E5A60',
   },
   catInternaText: {
-    color: '#6B21A8',
+    color: '#7A541E',
   },
   catExternaText: {
-    color: '#0F766E',
+    color: '#1E5E3A',
   },
   treatmentDesc: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#526466',
     marginBottom: 2,
   },
   treatmentInterval: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#059669',
+    color: '#0E5A60',
   },
   input: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAF8F4',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#D8CFC0',
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 11,
     fontSize: 14,
-    color: '#111827',
+    color: '#14282A',
   },
   textArea: {
     minHeight: 72,
@@ -595,16 +584,16 @@ const styles = StyleSheet.create({
   recalcLink: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#2563EB',
+    color: '#0E5A60',
     marginBottom: 6,
   },
   helperText: {
     fontSize: 11,
-    color: '#6B7280',
+    color: '#526466',
     marginTop: 4,
   },
   primaryButton: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0E5A60',
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
@@ -623,10 +612,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FAF8F4',
+    borderWidth: 1,
+    borderColor: '#E4DDD0',
   },
   cancelButtonText: {
-    color: '#4B5563',
+    color: '#526466',
     fontSize: 14,
     fontWeight: '600',
   },

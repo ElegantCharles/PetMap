@@ -123,7 +123,7 @@ export default function PetDetailScreen({ navigation, route }: PetDetailScreenPr
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color="#0E5A60" />
         <Text style={styles.loadingText}>Cargando ficha de mascota...</Text>
       </View>
     );
@@ -138,7 +138,7 @@ export default function PetDetailScreen({ navigation, route }: PetDetailScreenPr
             style={styles.secondaryButton}
             onPress={() => navigation.replace('Pets')}
           >
-            <Text style={styles.secondaryButtonText}>Volver a Mis Mascotas</Text>
+            <Text style={styles.secondaryButtonText}>Volver a Mis mascotas</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -155,11 +155,9 @@ export default function PetDetailScreen({ navigation, route }: PetDetailScreenPr
             </Text>
           </View>
           <View style={styles.headerInfo}>
-            <View style={styles.speciesBadge}>
-              <Text style={styles.speciesBadgeText}>
-                {pet.especie_nombre.toUpperCase()} · {pet.raza_nombre || 'MESTIZO'}
-              </Text>
-            </View>
+            <Text style={styles.speciesSubtitle}>
+              {pet.especie_nombre}, {pet.raza_nombre || 'Mestizo'}
+            </Text>
             <Text style={styles.petName}>{pet.nombre}</Text>
             <Text style={styles.ageHighlight}>{formatPetAge(pet.fecha_nacimiento)}</Text>
           </View>
@@ -199,7 +197,7 @@ export default function PetDetailScreen({ navigation, route }: PetDetailScreenPr
         <View style={styles.sectionBox}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitleNoMargin}>
-              Carnet Sanitario ({treatments.length})
+              Carnet sanitario ({treatments.length})
             </Text>
             <TouchableOpacity
               style={styles.addDoseButton}
@@ -339,13 +337,13 @@ export default function PetDetailScreen({ navigation, route }: PetDetailScreenPr
             onPress={() => navigation.navigate('Calendar')}
           >
             <Text style={styles.calendarLinkText}>
-              Ver Calendario General de Refuerzos →
+              Ver calendario general de refuerzos
             </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.sectionBox}>
-          <Text style={styles.sectionTitle}>Tutores y Cotutores</Text>
+          <Text style={styles.sectionTitle}>Tutores y cotutores</Text>
           {pet.tutores && pet.tutores.length > 0 ? (
             pet.tutores.map((t) => (
               <View key={t.id} style={styles.tutorRow}>
@@ -378,7 +376,7 @@ export default function PetDetailScreen({ navigation, route }: PetDetailScreenPr
             <TextInput
               style={styles.tutorInput}
               placeholder="Correo de familiar registrado..."
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#8B9899"
               value={coTutorEmail}
               onChangeText={setCoTutorEmail}
               autoCapitalize="none"
@@ -413,7 +411,7 @@ export default function PetDetailScreen({ navigation, route }: PetDetailScreenPr
             style={styles.editButton}
             onPress={() => navigation.navigate('PetForm', { petId: pet.id })}
           >
-            <Text style={styles.editButtonText}>Editar Datos de la Mascota</Text>
+            <Text style={styles.editButtonText}>Editar datos de la mascota</Text>
           </TouchableOpacity>
 
           {!confirmingDelete ? (
@@ -421,7 +419,7 @@ export default function PetDetailScreen({ navigation, route }: PetDetailScreenPr
               style={styles.deleteButton}
               onPress={() => setConfirmingDelete(true)}
             >
-              <Text style={styles.deleteButtonText}>Eliminar Mascota</Text>
+              <Text style={styles.deleteButtonText}>Eliminar mascota</Text>
             </TouchableOpacity>
           ) : (
             <View style={styles.confirmBox}>
@@ -455,7 +453,7 @@ export default function PetDetailScreen({ navigation, route }: PetDetailScreenPr
             style={styles.secondaryButton}
             onPress={() => navigation.navigate('Pets')}
           >
-            <Text style={styles.secondaryButtonText}>Volver a Mis Mascotas</Text>
+            <Text style={styles.secondaryButtonText}>Volver a Mis mascotas</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -466,7 +464,7 @@ export default function PetDetailScreen({ navigation, route }: PetDetailScreenPr
 const styles = StyleSheet.create({
   centerContainer: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F6F3EC',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -474,11 +472,11 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#4B5563',
+    color: '#526466',
   },
   scrollContainer: {
     flexGrow: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F6F3EC',
     alignItems: 'center',
     padding: 20,
   },
@@ -486,13 +484,10 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 480,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E4DDD0',
     padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
   },
   headerRow: {
     flexDirection: 'row',
@@ -500,73 +495,67 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   avatarCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#DBEAFE',
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    backgroundColor: '#E6CFA8',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
   },
   avatarInitial: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1D4ED8',
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#0E5A60',
   },
   headerInfo: {
     flex: 1,
   },
-  speciesBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 999,
-    marginBottom: 4,
-  },
-  speciesBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#2563EB',
+  speciesSubtitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#526466',
+    marginBottom: 2,
   },
   petName: {
     fontSize: 26,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: '700',
+    color: '#14282A',
+    letterSpacing: -0.3,
   },
   ageHighlight: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#059669',
+    color: '#0E5A60',
     marginTop: 2,
   },
   errorBox: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#FDF2F2',
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: '#F5C2C0',
     borderRadius: 10,
     padding: 12,
     marginBottom: 16,
   },
   errorText: {
-    color: '#B91C1C',
+    color: '#A61B1B',
     fontSize: 13,
     fontWeight: '500',
   },
   errorTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#B91C1C',
+    color: '#A61B1B',
     marginBottom: 16,
     textAlign: 'center',
   },
   infoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAF8F4',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E4DDD0',
     padding: 14,
     marginBottom: 20,
     gap: 12,
@@ -576,26 +565,26 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#526466',
     marginBottom: 2,
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#14282A',
   },
   sectionBox: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAF8F4',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E4DDD0',
     padding: 16,
     marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#14282A',
     marginBottom: 12,
   },
   tutorRow: {
@@ -604,7 +593,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#E4DDD0',
   },
   tutorInfo: {
     flex: 1,
@@ -612,36 +601,36 @@ const styles = StyleSheet.create({
   tutorName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: '#14282A',
   },
   tutorEmail: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#526466',
   },
   roleBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 999,
+    borderRadius: 6,
   },
   primaryRoleBadge: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: '#E4F0F1',
   },
   coRoleBadge: {
-    backgroundColor: '#E0E7FF',
+    backgroundColor: '#F3E7D3',
   },
   roleBadgeText: {
     fontSize: 11,
     fontWeight: '700',
   },
   primaryRoleText: {
-    color: '#065F46',
+    color: '#0E5A60',
   },
   coRoleText: {
-    color: '#3730A3',
+    color: '#7A541E',
   },
   emptySmall: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#526466',
     marginBottom: 8,
   },
   addTutorRow: {
@@ -653,15 +642,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#D8CFC0',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 13,
-    color: '#111827',
+    color: '#14282A',
   },
   addTutorBtn: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0E5A60',
     borderRadius: 8,
     paddingHorizontal: 14,
     justifyContent: 'center',
@@ -675,13 +664,13 @@ const styles = StyleSheet.create({
   feedbackOk: {
     marginTop: 8,
     fontSize: 12,
-    color: '#059669',
+    color: '#0E5A60',
     fontWeight: '600',
   },
   feedbackErr: {
     marginTop: 8,
     fontSize: 12,
-    color: '#B91C1C',
+    color: '#A61B1B',
     fontWeight: '600',
   },
   sectionHeaderRow: {
@@ -693,12 +682,12 @@ const styles = StyleSheet.create({
   sectionTitleNoMargin: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#14282A',
   },
   addDoseButton: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0E5A60',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 8,
   },
   addDoseButtonText: {
@@ -709,7 +698,7 @@ const styles = StyleSheet.create({
   doseCard: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E4DDD0',
     borderRadius: 10,
     padding: 12,
     marginBottom: 10,
@@ -725,67 +714,67 @@ const styles = StyleSheet.create({
   catBadge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 999,
+    borderRadius: 6,
   },
   catVacuna: {
-    backgroundColor: '#DBEAFE',
+    backgroundColor: '#E4F0F1',
   },
   catInterna: {
-    backgroundColor: '#F3E8FF',
+    backgroundColor: '#F3E7D3',
   },
   catExterna: {
-    backgroundColor: '#CCFBF1',
+    backgroundColor: '#E8F3E8',
   },
   catBadgeText: {
     fontSize: 10,
     fontWeight: '700',
   },
   catVacunaText: {
-    color: '#1D4ED8',
+    color: '#0E5A60',
   },
   catInternaText: {
-    color: '#6B21A8',
+    color: '#7A541E',
   },
   catExternaText: {
-    color: '#0F766E',
+    color: '#1E5E3A',
   },
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 999,
+    borderRadius: 6,
   },
   statusVencido: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#FDE8E8',
   },
   statusProximo: {
     backgroundColor: '#FEF3C7',
   },
   statusAlDia: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: '#DCFCE7',
   },
   statusSinFecha: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#EFECE6',
   },
   statusBadgeText: {
     fontSize: 10,
     fontWeight: '700',
   },
   statusVencidoText: {
-    color: '#B91C1C',
+    color: '#A61B1B',
   },
   statusProximoText: {
-    color: '#B45309',
+    color: '#9A4A06',
   },
   statusAlDiaText: {
-    color: '#065F46',
+    color: '#14532D',
   },
   statusSinFechaText: {
-    color: '#4B5563',
+    color: '#526466',
   },
   doseTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#111827',
+    color: '#14282A',
     marginBottom: 6,
   },
   doseDatesRow: {
@@ -795,12 +784,12 @@ const styles = StyleSheet.create({
   },
   doseDateText: {
     fontSize: 12,
-    color: '#374151',
+    color: '#2A3F41',
     fontWeight: '500',
   },
   doseMetaText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#526466',
     marginTop: 2,
   },
   doseActionsRow: {
@@ -810,10 +799,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: '#EFECE6',
   },
   doseEditBtn: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E4F0F1',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 6,
@@ -821,10 +810,10 @@ const styles = StyleSheet.create({
   doseEditBtnText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1D4ED8',
+    color: '#0E5A60',
   },
   doseDeleteBtn: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#FDF2F2',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 6,
@@ -832,7 +821,7 @@ const styles = StyleSheet.create({
   doseDeleteBtnText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#B91C1C',
+    color: '#A61B1B',
   },
   calendarLinkBtn: {
     marginTop: 4,
@@ -840,16 +829,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   calendarLinkText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
-    color: '#2563EB',
+    color: '#0E5A60',
   },
   actionsColumn: {
     gap: 10,
   },
   editButton: {
     width: '100%',
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0E5A60',
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
@@ -857,32 +846,32 @@ const styles = StyleSheet.create({
   editButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   deleteButton: {
     width: '100%',
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#FDF2F2',
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: '#F5C2C0',
     paddingVertical: 13,
     borderRadius: 10,
     alignItems: 'center',
   },
   deleteButtonText: {
-    color: '#B91C1C',
-    fontSize: 15,
+    color: '#A61B1B',
+    fontSize: 14,
     fontWeight: '600',
   },
   confirmBox: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#FDF2F2',
     borderWidth: 1,
-    borderColor: '#FCA5A5',
+    borderColor: '#F5C2C0',
     borderRadius: 10,
     padding: 14,
   },
   confirmText: {
     fontSize: 13,
-    color: '#991B1B',
+    color: '#881313',
     fontWeight: '600',
     marginBottom: 10,
     textAlign: 'center',
@@ -893,7 +882,7 @@ const styles = StyleSheet.create({
   },
   confirmYesBtn: {
     flex: 1,
-    backgroundColor: '#DC2626',
+    backgroundColor: '#A61B1B',
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
@@ -907,26 +896,28 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#D8CFC0',
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
   },
   confirmNoText: {
-    color: '#374151',
+    color: '#2A3F41',
     fontSize: 13,
     fontWeight: '600',
   },
   secondaryButton: {
     width: '100%',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FAF8F4',
+    borderWidth: 1,
+    borderColor: '#E4DDD0',
     paddingVertical: 13,
     borderRadius: 10,
     alignItems: 'center',
   },
   secondaryButtonText: {
-    color: '#374151',
-    fontSize: 15,
+    color: '#526466',
+    fontSize: 14,
     fontWeight: '600',
   },
 });

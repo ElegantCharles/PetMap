@@ -2,6 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { RootStackParamList } from './types';
 import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
 import PetsScreen from '../screens/PetsScreen';
 import MapScreen from '../screens/MapScreen';
 
@@ -24,7 +25,12 @@ export default function AppNavigator() {
       <Stack.Screen
         name="Login"
         component={LoginScreen}
-        options={{ title: 'Acceso' }}
+        options={{ title: 'Iniciar Sesión' }}
+      />
+      <Stack.Screen
+        name="Register"
+        component={RegisterScreen}
+        options={{ title: 'Crear Cuenta' }}
       />
       <Stack.Screen
         name="Pets"

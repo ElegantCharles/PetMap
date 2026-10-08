@@ -177,6 +177,8 @@ Permite validar el comportamiento nativo, gestos táctiles y transiciones fluida
    - **Android:** Abrir **Expo Go** y presionar *"Scan QR code"*.
    - **iOS:** Enfocar el código con la aplicación de la **Cámara** para abrir en Expo Go (en iOS puede ser necesario iniciar sesión con una cuenta de Expo).
 
+Podrá interactuar y navegar entre las pantallas de **Iniciar Sesión**, **Crear Cuenta**, **Mis Mascotas**, **Registrar Mascota**, **Ficha de Mascota y Carnet Sanitario**, **Registrar Dosis**, **Calendario de Refuerzos** y **Mapa**.
+
 ---
 
 #### 2. Visualización Alternativa y Cómoda: Navegador Web
@@ -190,32 +192,6 @@ npm run web
 *(O presionando la tecla `w` en la consola donde ya se encuentre ejecutando `npm start`).*
 
 La aplicación se abrirá en `http://localhost:8081` (optimizada en una columna móvil centrada de hasta `480 px`) y se conectará automáticamente a `http://localhost:3000/api` sin necesidad de editar `src/config/api.ts`.
-
----
-
-#### 3. Guía de pruebas funcionales (flujo completo para revisión docente y QA)
-
-1. **Inicio de sesión y registro (`Login` / `Register`):**
-   - Ingresar con la cuenta semilla (`demo@meinpets.cl` / `Password123`) o presionar **Crear cuenta nueva** para registrar un usuario nuevo.
-   - Para cerrar sesión desde **Mis mascotas**, presionar el botón de menú `⋯` en la esquina superior derecha y elegir **Cerrar sesión**.
-2. **Registro y edición de mascotas (`Pets` / `PetForm`):**
-   - En **Mis mascotas**, presionar **Registrar mascota** (o **Agregar**).
-   - Seleccionar especie (**Perro** / **Gato**), elegir la **Raza** desde la hoja desplegable inferior, indicar la fecha de nacimiento con los atajos rápidos (`Hace 3 meses`, `Hace 1 año`, `Hace 3 años`) o presionando **Elegir otra fecha** (`AAAA-MM-DD`), seleccionar sexo y esterilización, y opcionalmente desplegar **Agregar número de microchip**.
-   - Desde la **Ficha de mascota**, el menú superior `⋯` permite **Editar datos** o **Eliminar mascota** (con confirmación en hoja inferior).
-3. **Carnet sanitario y registro de dosis (`PetDetail` / `TreatmentForm`):**
-   - En una mascota recién creada, la tarjeta principal indica **Sin dosis registradas** con el botón **Registrar dosis**.
-   - En **Registrar dosis**:
-     - Tocar **Tratamiento** abre la hoja inferior **Elige el tratamiento**, donde se puede filtrar por **Todas**, **Vacunas**, **Internas** (antiparasitarios internos) y **Externas** (antiparasitarios externos), mostrando la descripción corta y frecuencia de cada ítem.
-     - En **¿Cuándo se aplicó?**, elegir entre los 3 atajos (`Hoy`, `Ayer`, `Hace 1 semana`) o tocar **Elegir otra fecha** para ingresar una fecha `AAAA-MM-DD` (por ejemplo, una fecha pasada para probar refuerzos próximos o vencidos).
-     - La tarjeta amarilla **Próximo refuerzo** calcula automáticamente la fecha sugerida según el tratamiento elegido y permite ajustarla con `− 1 semana` / `+ 1 semana` o **Escribir otra fecha**.
-     - Opcionalmente, tocar **Agregar clínica, lote o notas** despliega los campos adicionales.
-   - Al guardar, la **Ficha de mascota** actualiza su tarjeta principal mostrando el refuerzo más urgente y su estado clínico (**Vencido**, **Próximo** ≤ 30 días o **Al día**). Si se registra una dosis más reciente del mismo tratamiento, las aplicaciones previas de ese tratamiento quedan marcadas automáticamente como **Anterior** para no contar como vencidas.
-   - Al tocar cualquier dosis del **Carnet sanitario**, se abre una hoja inferior con su detalle completo y los botones **Editar** y **Eliminar**.
-4. **Asociar cotutor familiar (`PetDetail`):**
-   - Al final de la ficha de la mascota, tocar **Invitar a un familiar**, escribir el correo de otro usuario registrado en el sistema y presionar **Asociar**. Ambos usuarios verán y podrán gestionar la mascota y su carnet.
-5. **Calendario de refuerzos (`Calendar`) y Mapa (`Map`):**
-   - En **Calendario de refuerzos**, los 3 recuadros superiores (**Vencidos**, **Próximos**, **Al día**) muestran el conteo y actúan como filtros al tocarlos. Tocar cualquier fila del calendario abre directamente la ficha de esa mascota.
-   - La pantalla **Mapa veterinario** presenta por ahora una vista informativa provisoria hasta la integración del mapa interactivo en la siguiente etapa.
 
 ## 4. Integrantes del equipo y roles
 | Integrante | Rol |

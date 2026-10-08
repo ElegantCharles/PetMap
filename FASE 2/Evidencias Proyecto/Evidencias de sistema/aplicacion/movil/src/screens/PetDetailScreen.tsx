@@ -16,11 +16,19 @@ import {
   addPetTutor,
   formatPetAge,
 } from '../services/pets';
+import {
+  PetTreatmentRecord,
+  fetchPetTreatments,
+  deletePetTreatment,
+  formatCategoryLabel,
+  getBoosterStatus,
+} from '../services/treatments';
 
 export default function PetDetailScreen({ navigation, route }: PetDetailScreenProps) {
   const { petId } = route.params;
 
   const [pet, setPet] = useState<Pet | null>(null);
+  const [treatments, setTreatments] = useState<PetTreatmentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -30,13 +38,18 @@ export default function PetDetailScreen({ navigation, route }: PetDetailScreenPr
 
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deletingRecordId, setDeletingRecordId] = useState<number | null>(null);
 
   const loadPet = useCallback(async () => {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const data = await fetchPetById(petId);
+      const [data, records] = await Promise.all([
+        fetchPetById(petId),
+        fetchPetTreatments(petId),
+      ]);
       setPet(data);
+      setTreatments(records);
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : 'Error al cargar la ficha de la mascota'
@@ -48,7 +61,26 @@ export default function PetDetailScreen({ navigation, route }: PetDetailScreenPr
 
   useEffect(() => {
     loadPet();
-  }, [loadPet]);
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadPet();
+    });
+    return unsubscribe;
+  }, [navigation, loadPet]);
+
+  const handleDeleteTreatment = async (recordId: number) => {
+    setDeletingRecordId(recordId);
+    setErrorMessage(null);
+    try {
+      await deletePetTreatment(petId, recordId);
+      setTreatments((prev) => prev.filter((item) => item.id !== recordId));
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : 'No se pudo eliminar el registro sanitario'
+      );
+    } finally {
+      setDeletingRecordId(null);
+    }
+  };
 
   const handleAddTutor = async () => {
     setTutorFeedback(null);
@@ -162,6 +194,154 @@ export default function PetDetailScreen({ navigation, route }: PetDetailScreenPr
               {pet.numero_chip || 'No registrado'}
             </Text>
           </View>
+        </View>
+
+        <View style={styles.sectionBox}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitleNoMargin}>
+              Carnet Sanitario ({treatments.length})
+            </Text>
+            <TouchableOpacity
+              style={styles.addDoseButton}
+              onPress={() =>
+                navigation.navigate('TreatmentForm', {
+                  petId: pet.id,
+                  petName: pet.nombre,
+                  especieId: pet.especie_id,
+                })
+              }
+            >
+              <Text style={styles.addDoseButtonText}>+ Registrar dosis</Text>
+            </TouchableOpacity>
+          </View>
+
+          {treatments.length === 0 ? (
+            <Text style={styles.emptySmall}>
+              Aún no hay vacunas ni desparasitaciones registradas para {pet.nombre}.
+            </Text>
+          ) : (
+            treatments.map((rec) => {
+              const boosterInfo = getBoosterStatus(rec.fecha_proximo_refuerzo);
+              return (
+                <View key={rec.id} style={styles.doseCard}>
+                  <View style={styles.doseTopRow}>
+                    <View
+                      style={[
+                        styles.catBadge,
+                        rec.tratamiento_categoria === 'vacuna'
+                          ? styles.catVacuna
+                          : rec.tratamiento_categoria === 'desparasitacion_interna'
+                          ? styles.catInterna
+                          : styles.catExterna,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.catBadgeText,
+                          rec.tratamiento_categoria === 'vacuna'
+                            ? styles.catVacunaText
+                            : rec.tratamiento_categoria === 'desparasitacion_interna'
+                            ? styles.catInternaText
+                            : styles.catExternaText,
+                        ]}
+                      >
+                        {formatCategoryLabel(rec.tratamiento_categoria)}
+                      </Text>
+                    </View>
+
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        boosterInfo.status === 'vencido'
+                          ? styles.statusVencido
+                          : boosterInfo.status === 'proximo'
+                          ? styles.statusProximo
+                          : boosterInfo.status === 'al_dia'
+                          ? styles.statusAlDia
+                          : styles.statusSinFecha,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.statusBadgeText,
+                          boosterInfo.status === 'vencido'
+                            ? styles.statusVencidoText
+                            : boosterInfo.status === 'proximo'
+                            ? styles.statusProximoText
+                            : boosterInfo.status === 'al_dia'
+                            ? styles.statusAlDiaText
+                            : styles.statusSinFechaText,
+                        ]}
+                      >
+                        {boosterInfo.label}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.doseTitle}>{rec.tratamiento_nombre}</Text>
+
+                  <View style={styles.doseDatesRow}>
+                    <Text style={styles.doseDateText}>
+                      Aplicada: {rec.fecha_aplicacion}
+                    </Text>
+                    {rec.fecha_proximo_refuerzo ? (
+                      <Text style={styles.doseDateText}>
+                        Refuerzo: {rec.fecha_proximo_refuerzo}
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  {rec.veterinaria_nombre ? (
+                    <Text style={styles.doseMetaText}>
+                      Clínica: {rec.veterinaria_nombre}
+                    </Text>
+                  ) : null}
+                  {rec.lote_producto ? (
+                    <Text style={styles.doseMetaText}>
+                      Lote: {rec.lote_producto}
+                    </Text>
+                  ) : null}
+                  {rec.notas ? (
+                    <Text style={styles.doseMetaText}>Notas: {rec.notas}</Text>
+                  ) : null}
+
+                  <View style={styles.doseActionsRow}>
+                    <TouchableOpacity
+                      style={styles.doseEditBtn}
+                      onPress={() =>
+                        navigation.navigate('TreatmentForm', {
+                          petId: pet.id,
+                          petName: pet.nombre,
+                          especieId: pet.especie_id,
+                          recordId: rec.id,
+                        })
+                      }
+                    >
+                      <Text style={styles.doseEditBtnText}>Editar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.doseDeleteBtn}
+                      onPress={() => handleDeleteTreatment(rec.id)}
+                      disabled={deletingRecordId === rec.id}
+                    >
+                      <Text style={styles.doseDeleteBtnText}>
+                        {deletingRecordId === rec.id ? 'Eliminando...' : 'Eliminar'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })
+          )}
+
+          <TouchableOpacity
+            style={styles.calendarLinkBtn}
+            onPress={() => navigation.navigate('Calendar')}
+          >
+            <Text style={styles.calendarLinkText}>
+              Ver Calendario General de Refuerzos →
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.sectionBox}>
@@ -503,6 +683,166 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#B91C1C',
     fontWeight: '600',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitleNoMargin: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  addDoseButton: {
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  addDoseButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  doseCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+  },
+  doseTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 6,
+  },
+  catBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  catVacuna: {
+    backgroundColor: '#DBEAFE',
+  },
+  catInterna: {
+    backgroundColor: '#F3E8FF',
+  },
+  catExterna: {
+    backgroundColor: '#CCFBF1',
+  },
+  catBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  catVacunaText: {
+    color: '#1D4ED8',
+  },
+  catInternaText: {
+    color: '#6B21A8',
+  },
+  catExternaText: {
+    color: '#0F766E',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  statusVencido: {
+    backgroundColor: '#FEE2E2',
+  },
+  statusProximo: {
+    backgroundColor: '#FEF3C7',
+  },
+  statusAlDia: {
+    backgroundColor: '#D1FAE5',
+  },
+  statusSinFecha: {
+    backgroundColor: '#E5E7EB',
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  statusVencidoText: {
+    color: '#B91C1C',
+  },
+  statusProximoText: {
+    color: '#B45309',
+  },
+  statusAlDiaText: {
+    color: '#065F46',
+  },
+  statusSinFechaText: {
+    color: '#4B5563',
+  },
+  doseTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 6,
+  },
+  doseDatesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  doseDateText: {
+    fontSize: 12,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  doseMetaText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  doseActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  doseEditBtn: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  doseEditBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1D4ED8',
+  },
+  doseDeleteBtn: {
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  doseDeleteBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#B91C1C',
+  },
+  calendarLinkBtn: {
+    marginTop: 4,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  calendarLinkText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2563EB',
   },
   actionsColumn: {
     gap: 10,

@@ -19,6 +19,15 @@ export const API_CONFIG = {
       LIST: '/pets',
       DETAIL: (id: string | number) => `/pets/${id}`,
       TUTORS: (id: string | number) => `/pets/${id}/tutors`,
+      TREATMENTS: (petId: string | number) => `/pets/${petId}/treatments`,
+      TREATMENT_DETAIL: (petId: string | number, recordId: string | number) =>
+        `/pets/${petId}/treatments/${recordId}`,
+    },
+    TREATMENTS: {
+      CATALOG: '/treatments',
+    },
+    CALENDAR: {
+      LIST: '/calendar',
     },
     MAP: {
       LOCATIONS: '/map/locations',

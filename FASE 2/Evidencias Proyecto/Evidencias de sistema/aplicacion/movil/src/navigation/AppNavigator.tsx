@@ -6,6 +6,8 @@ import RegisterScreen from '../screens/RegisterScreen';
 import PetsScreen from '../screens/PetsScreen';
 import PetFormScreen from '../screens/PetFormScreen';
 import PetDetailScreen from '../screens/PetDetailScreen';
+import TreatmentFormScreen from '../screens/TreatmentFormScreen';
+import CalendarScreen from '../screens/CalendarScreen';
 import MapScreen from '../screens/MapScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -50,6 +52,18 @@ export default function AppNavigator() {
         name="PetDetail"
         component={PetDetailScreen}
         options={{ title: 'Ficha de Mascota' }}
+      />
+      <Stack.Screen
+        name="TreatmentForm"
+        component={TreatmentFormScreen}
+        options={({ route }) => ({
+          title: route.params?.recordId ? 'Editar Dosis' : 'Registrar Dosis',
+        })}
+      />
+      <Stack.Screen
+        name="Calendar"
+        component={CalendarScreen}
+        options={{ title: 'Calendario Sanitario' }}
       />
       <Stack.Screen
         name="Map"

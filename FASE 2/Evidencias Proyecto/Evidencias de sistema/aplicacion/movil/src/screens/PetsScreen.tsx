@@ -133,6 +133,15 @@ export default function PetsScreen({ navigation }: PetsScreenProps) {
         )}
 
         <TouchableOpacity
+          style={styles.calendarButton}
+          onPress={() => navigation.navigate('Calendar')}
+        >
+          <Text style={styles.calendarButtonText}>
+            Calendario de Vacunas y Refuerzos
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={styles.mapButton}
           onPress={() => navigation.navigate('Map')}
         >
@@ -343,6 +352,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#1D4ED8',
+  },
+  calendarButton: {
+    width: '100%',
+    backgroundColor: '#D97706',
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  calendarButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
   mapButton: {
     width: '100%',

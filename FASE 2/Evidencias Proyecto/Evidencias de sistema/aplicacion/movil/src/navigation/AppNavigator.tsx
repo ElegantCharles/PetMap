@@ -4,6 +4,8 @@ import type { RootStackParamList } from './types';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import PetsScreen from '../screens/PetsScreen';
+import PetFormScreen from '../screens/PetFormScreen';
+import PetDetailScreen from '../screens/PetDetailScreen';
 import MapScreen from '../screens/MapScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -36,6 +38,18 @@ export default function AppNavigator() {
         name="Pets"
         component={PetsScreen}
         options={{ title: 'Mis Mascotas' }}
+      />
+      <Stack.Screen
+        name="PetForm"
+        component={PetFormScreen}
+        options={({ route }) => ({
+          title: route.params?.petId ? 'Editar Mascota' : 'Registrar Mascota',
+        })}
+      />
+      <Stack.Screen
+        name="PetDetail"
+        component={PetDetailScreen}
+        options={{ title: 'Ficha de Mascota' }}
       />
       <Stack.Screen
         name="Map"

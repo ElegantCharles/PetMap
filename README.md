@@ -87,16 +87,17 @@ docker compose down -v
 docker compose up --build
 ```
 Esto levantará automáticamente:
-* El contenedor **`meinpets_db`**: instancia local de PostgreSQL 16 con PostGIS y ejecución automática de los scripts en `base-de-datos/scripts/`:
-  * `01_init.sql`: habilitación de la extensión `postgis`.
+* El contenedor **`meinpets_db`**: instancia local de PostgreSQL 16 con PostGIS y ejecución automática de los scripts en `base-de-datos/scripts/` (codificados en UTF-8 sin BOM):
+  * `01_init.sql`: configuración `client_encoding = 'UTF8'` y habilitación de la extensión `postgis`.
   * `02_schema.sql`: creación del esquema relacional (`usuarios`, `especies`, `razas`, `mascotas`, `usuarios_mascotas`, `catalogo_tratamientos`, `historial_tratamientos` y `establecimientos`) e índices espaciales GiST.
-  * `03_seed.sql`: carga inicial idempotente de especies, razas frecuentes, catálogo de vacunas/antiparasitarios, usuario de prueba y establecimientos.
+  * `03_seed.sql`: carga inicial idempotente de especies (`Perro`, `Gato`), razas frecuentes, catálogo de vacunas y antiparasitarios (internos y externos) con sus descripciones clínicas e intervalos de refuerzo sugeridos, usuario de prueba y establecimientos.
+  * `04_add_tratamientos_descripcion.sql`: migración idempotente que asegura la columna `descripcion` y sus textos en bases de datos preexistentes.
 * El contenedor **`meinpets_api`**: la API REST conectada a la base de datos con soporte de autenticación mediante hash `bcrypt` y tokens `JWT` (`JWT_SECRET` y `JWT_EXPIRES_IN` definidos en `.env`).
 
 La API queda disponible en `http://localhost:3000` (y bajo el prefijo `http://localhost:3000/api`).
 
 #### Credenciales de prueba precargadas
-Puede registrar una cuenta nueva desde la pantalla **Crear Cuenta** o ingresar directamente con el usuario de prueba incluido en `03_seed.sql`:
+Puede registrar una cuenta nueva desde la pantalla **Crear cuenta** o ingresar directamente con el usuario de prueba incluido en `03_seed.sql`:
 - **Correo electrónico:** `demo@meinpets.cl`
 - **Contraseña:** `Password123`
 
@@ -114,12 +115,39 @@ Para comprobar el correcto funcionamiento y la conexión con la base de datos:
   }
   ```
 
-#### Endpoints de autenticación disponibles
+#### Endpoints disponibles en la API
+
+**1. Autenticación y perfil**
+
 | Método | Ruta | Descripción |
 |---|---|---|
 | `POST` | `/api/auth/register` | Registro de usuario (`nombre_completo`, `email`, `password`) con validación de formato, complejidad de clave y hash `bcrypt`. Devuelve `201` o `409` si el correo ya existe. |
 | `POST` | `/api/auth/login` | Inicio de sesión (`email`, `password`). Verifica credenciales y emite un token `JWT` junto con los datos públicos del perfil (`200`) o `401` ante credenciales inválidas. |
 | `GET` | `/api/auth/me` | Ruta protegida mediante header `Authorization: Bearer <token>`. Devuelve el perfil del usuario autenticado (`200`) o `401` si el token falta, es inválido o expiró. |
+
+**2. Catálogo de especies, mascotas y cotutores**
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/api/species` | Catálogo público de especies (`Perro`, `Gato`) con su listado anidado de razas. |
+| `GET` | `/api/species/:id/breeds` | Listado de razas pertenecientes a una especie específica. |
+| `GET` | `/api/pets` | Lista las mascotas asociadas al usuario autenticado (como tutor principal o cotutor). |
+| `POST` | `/api/pets` | Registra una nueva mascota (`nombre`, `especie_id`, `raza_id`, `fecha_nacimiento`, `sexo`, `esterilizado`, `numero_chip`) y asocia al usuario como tutor principal. |
+| `GET` | `/api/pets/:id` | Obtiene el detalle de la mascota junto con la lista de sus tutores registrados. |
+| `PUT` | `/api/pets/:id` | Actualiza los datos de la mascota (solo accesible para sus tutores). |
+| `DELETE` | `/api/pets/:id` | Elimina la ficha de la mascota y su historial sanitario asociado. |
+| `POST` | `/api/pets/:id/tutors` | Asocia un familiar o cotutor adicional a la mascota a partir de su `email` registrado. |
+
+**3. Carnet sanitario (vacunas y antiparasitarios) y calendario**
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/api/treatments` | Catálogo de vacunas, antiparasitarios internos y antiparasitarios externos (filtrable por `?especie_id=`), incluyendo `descripcion` corta y `dias_sugeridos_refuerzo`. |
+| `GET` | `/api/pets/:id/treatments` | Historial sanitario de la mascota ordenado desde la aplicación más reciente, con cálculo de `estado_refuerzo` (`atrasado`, `proximo`, `vigente`, `sin_refuerzo`) y `dias_restantes`. |
+| `POST` | `/api/pets/:id/treatments` | Registra una dosis aplicada (`tratamiento_id`, `fecha_aplicacion`, `fecha_proximo_refuerzo`, `clinica_nombre`, `veterinario_nombre`, `observaciones`). Si no se envía fecha de refuerzo, la calcula automáticamente según el catálogo. |
+| `PUT` | `/api/pets/:id/treatments/:recordId` | Edita una dosis existente del carnet sanitario de la mascota. |
+| `DELETE` | `/api/pets/:id/treatments/:recordId` | Elimina un registro de dosis del carnet sanitario. |
+| `GET` | `/api/calendar` | Consolida todos los próximos refuerzos de las mascotas del usuario ordenados por urgencia (fecha de próximo refuerzo ascendente). |
 
 Para detener los contenedores:
 ```bash
@@ -128,7 +156,7 @@ docker compose down
 
 *(Opcional para desarrollo sin Docker en la API: Si se prefiere ejecutar la API directamente con Node.js (`npm run dev`), cambiar `POSTGRES_HOST=db` por `POSTGRES_HOST=localhost` en el archivo `.env` manteniendo el contenedor de la base de datos activo).*
 
-
+---
 
 ### Aplicación móvil
 El cliente fue desarrollado con React Native y Expo. La forma recomendada de evaluación es en un **dispositivo móvil físico mediante código QR**, ya que permite apreciar la experiencia nativa de la aplicación. De forma alternativa y cómoda para revisión rápida, se incluye la opción de ejecutarla directamente en el **navegador web** de la computadora.
@@ -149,8 +177,6 @@ Permite validar el comportamiento nativo, gestos táctiles y transiciones fluida
    - **Android:** Abrir **Expo Go** y presionar *"Scan QR code"*.
    - **iOS:** Enfocar el código con la aplicación de la **Cámara** para abrir en Expo Go (en iOS puede ser necesario iniciar sesión con una cuenta de Expo).
 
-Podrá interactuar y navegar entre las pantallas de **Iniciar Sesión**, **Crear Cuenta**, **Mis Mascotas**, **Ficha de Mascota y Carnet Sanitario**, **Calendario de Refuerzos** y **Mapa**.
-
 ---
 
 #### 2. Visualización Alternativa y Cómoda: Navegador Web
@@ -163,11 +189,33 @@ npm run web
 ```
 *(O presionando la tecla `w` en la consola donde ya se encuentre ejecutando `npm start`).*
 
-La aplicación se abrirá en `http://localhost:8081` y se conectará automáticamente a `http://localhost:3000/api` sin necesidad de editar `src/config/api.ts`.
+La aplicación se abrirá en `http://localhost:8081` (optimizada en una columna móvil centrada de hasta `480 px`) y se conectará automáticamente a `http://localhost:3000/api` sin necesidad de editar `src/config/api.ts`.
 
+---
 
+#### 3. Guía de pruebas funcionales (flujo completo para revisión docente y QA)
 
-
+1. **Inicio de sesión y registro (`Login` / `Register`):**
+   - Ingresar con la cuenta semilla (`demo@meinpets.cl` / `Password123`) o presionar **Crear cuenta nueva** para registrar un usuario nuevo.
+   - Para cerrar sesión desde **Mis mascotas**, presionar el botón de menú `⋯` en la esquina superior derecha y elegir **Cerrar sesión**.
+2. **Registro y edición de mascotas (`Pets` / `PetForm`):**
+   - En **Mis mascotas**, presionar **Registrar mascota** (o **Agregar**).
+   - Seleccionar especie (**Perro** / **Gato**), elegir la **Raza** desde la hoja desplegable inferior, indicar la fecha de nacimiento con los atajos rápidos (`Hace 3 meses`, `Hace 1 año`, `Hace 3 años`) o presionando **Elegir otra fecha** (`AAAA-MM-DD`), seleccionar sexo y esterilización, y opcionalmente desplegar **Agregar número de microchip**.
+   - Desde la **Ficha de mascota**, el menú superior `⋯` permite **Editar datos** o **Eliminar mascota** (con confirmación en hoja inferior).
+3. **Carnet sanitario y registro de dosis (`PetDetail` / `TreatmentForm`):**
+   - En una mascota recién creada, la tarjeta principal indica **Sin dosis registradas** con el botón **Registrar dosis**.
+   - En **Registrar dosis**:
+     - Tocar **Tratamiento** abre la hoja inferior **Elige el tratamiento**, donde se puede filtrar por **Todas**, **Vacunas**, **Internas** (antiparasitarios internos) y **Externas** (antiparasitarios externos), mostrando la descripción corta y frecuencia de cada ítem.
+     - En **¿Cuándo se aplicó?**, elegir entre los 3 atajos (`Hoy`, `Ayer`, `Hace 1 semana`) o tocar **Elegir otra fecha** para ingresar una fecha `AAAA-MM-DD` (por ejemplo, una fecha pasada para probar refuerzos próximos o vencidos).
+     - La tarjeta amarilla **Próximo refuerzo** calcula automáticamente la fecha sugerida según el tratamiento elegido y permite ajustarla con `− 1 semana` / `+ 1 semana` o **Escribir otra fecha**.
+     - Opcionalmente, tocar **Agregar clínica, lote o notas** despliega los campos adicionales.
+   - Al guardar, la **Ficha de mascota** actualiza su tarjeta principal mostrando el refuerzo más urgente y su estado clínico (**Vencido**, **Próximo** ≤ 30 días o **Al día**). Si se registra una dosis más reciente del mismo tratamiento, las aplicaciones previas de ese tratamiento quedan marcadas automáticamente como **Anterior** para no contar como vencidas.
+   - Al tocar cualquier dosis del **Carnet sanitario**, se abre una hoja inferior con su detalle completo y los botones **Editar** y **Eliminar**.
+4. **Asociar cotutor familiar (`PetDetail`):**
+   - Al final de la ficha de la mascota, tocar **Invitar a un familiar**, escribir el correo de otro usuario registrado en el sistema y presionar **Asociar**. Ambos usuarios verán y podrán gestionar la mascota y su carnet.
+5. **Calendario de refuerzos (`Calendar`) y Mapa (`Map`):**
+   - En **Calendario de refuerzos**, los 3 recuadros superiores (**Vencidos**, **Próximos**, **Al día**) muestran el conteo y actúan como filtros al tocarlos. Tocar cualquier fila del calendario abre directamente la ficha de esa mascota.
+   - La pantalla **Mapa veterinario** presenta por ahora una vista informativa provisoria hasta la integración del mapa interactivo en la siguiente etapa.
 
 ## 4. Integrantes del equipo y roles
 | Integrante | Rol |

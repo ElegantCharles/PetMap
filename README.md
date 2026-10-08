@@ -83,13 +83,16 @@ cp .env.example .env
 docker compose up --build
 ```
 Esto levantará automáticamente:
-* El contenedor **`meinpets_db`**: instancia local de PostgreSQL 16 con PostGIS y ejecución automática del script inicial `01_init.sql`.
-* El contenedor **`meinpets_api`**: la API REST conectada a la base de datos.
+* El contenedor **`meinpets_db`**: instancia local de PostgreSQL 16 con PostGIS y ejecución automática de los scripts en `base-de-datos/scripts/`:
+  * `01_init.sql`: habilitación de la extensión `postgis`.
+  * `02_schema.sql`: creación del esquema relacional (`usuarios`, `especies`, `razas`, `mascotas`, `usuarios_mascotas`, `catalogo_tratamientos`, `historial_tratamientos` y `establecimientos`) e índices espaciales GiST.
+  * `03_seed.sql`: carga inicial idempotente de especies, razas frecuentes, catálogo de vacunas/antiparasitarios y establecimientos de prueba.
+* El contenedor **`meinpets_api`**: la API REST conectada a la base de datos con soporte de autenticación mediante hash `bcrypt` y tokens `JWT` (`JWT_SECRET` y `JWT_EXPIRES_IN` definidos en `.env`).
 
-La API queda disponible en `http://localhost:3000`.
+La API queda disponible en `http://localhost:3000` (y bajo el prefijo `http://localhost:3000/api`).
 
 Para comprobar el correcto funcionamiento y la conexión con la base de datos:
-- **Ruta de verificación:** `http://localhost:3000/health`
+- **Ruta de verificación:** `http://localhost:3000/health` (o `http://localhost:3000/api/health`)
 - **Respuesta esperada:**
   ```json
   {
@@ -102,10 +105,18 @@ Para comprobar el correcto funcionamiento y la conexión con la base de datos:
   }
   ```
 
+#### Endpoints de autenticación disponibles
+| Método | Ruta | Descripción |
+|---|---|---|
+| `POST` | `/api/auth/register` | Registro de usuario (`nombre_completo`, `email`, `password`) con validación de formato, complejidad de clave y hash `bcrypt`. Devuelve `201` o `409` si el correo ya existe. |
+| `POST` | `/api/auth/login` | Inicio de sesión (`email`, `password`). Verifica credenciales y emite un token `JWT` junto con los datos públicos del perfil (`200`) o `401` ante credenciales inválidas. |
+| `GET` | `/api/auth/me` | Ruta protegida mediante header `Authorization: Bearer <token>`. Devuelve el perfil del usuario autenticado (`200`) o `401` si el token falta, es inválido o expiró. |
+
 Para detener los contenedores:
 ```bash
 docker compose down
 ```
+*(Si ya disponía de un volumen `meinpets_pgdata` creado en un sprint previo y desea reinicializar la base de datos desde cero con los nuevos scripts `02_schema.sql` y `03_seed.sql`, ejecute `docker compose down -v` antes de `docker compose up --build`).*
 
 *(Opcional para desarrollo sin Docker en la API: Si se prefiere ejecutar la API directamente con Node.js (`npm run dev`), cambiar `POSTGRES_HOST=db` por `POSTGRES_HOST=localhost` en el archivo `.env` manteniendo el contenedor de la base de datos activo).*
 
@@ -115,7 +126,7 @@ docker compose down
 El cliente fue desarrollado con React Native y Expo. La forma recomendada de evaluación es en un **dispositivo móvil físico mediante código QR**, ya que permite apreciar la experiencia nativa de la aplicación. De forma alternativa y cómoda para revisión rápida, se incluye la opción de ejecutarla directamente en el **navegador web** de la computadora.
 
 #### 1. Visualización Recomendada: Dispositivo Móvil Físico (Expo Go con QR)
-Permite validar el comportamiento nativo, gestos táctiles y transiciones fluidas en un teléfono real:
+Permite validar el comportamiento nativo, gestos táctiles y transiciones fluidas en teléfono real:
 
 1. **Instalar la aplicación Expo Go** en el celular (Google Play Store en Android o App Store en iOS).
 2. **Conectar el teléfono a la misma red Wi-Fi** que la computadora.
@@ -129,7 +140,7 @@ Permite validar el comportamiento nativo, gestos táctiles y transiciones fluida
    - **Android:** Abrir **Expo Go** y presionar *"Scan QR code"*.
    - **iOS:** Enfocar el código con la aplicación de la **Cámara** para abrir en Expo Go (en iOS puede ser necesario iniciar sesión con una cuenta de Expo).
 
-Podrá interactuar y navegar entre las pantallas de **Acceso**, **Mis Mascotas** y **Mapa**.
+Podrá interactuar y navegar entre las pantallas de **Iniciar Sesión**, **Crear Cuenta**, **Mis Mascotas** (con validación de sesión activa JWT y cierre de sesión) y **Mapa**.
 
 ---
 
@@ -145,7 +156,7 @@ npm run web
 La aplicación se abrirá automáticamente en `http://localhost:8081` con soporte completo de navegación entre pantallas (si el puerto está ocupado, se le preguntará si desea usar otro; solo presione la tecla "Enter").
 
 
-> **Configuración de la API:** La URL del backend se encuentra centralizada en `src/config/api.ts` (`API_CONFIG.BASE_URL`).
+> **Configuración de la API:** La URL del backend se encuentra centralizada en `src/config/api.ts` (`API_CONFIG.BASE_URL`). Para pruebas en un teléfono físico con Expo Go, configure la dirección IPv4 Wi-Fi local del equipo donde corre el servidor (ej. `http://192.168.1.X:3000/api`); para pruebas exclusivamente en navegador web local puede emplearse `http://localhost:3000/api`.
 
 
 

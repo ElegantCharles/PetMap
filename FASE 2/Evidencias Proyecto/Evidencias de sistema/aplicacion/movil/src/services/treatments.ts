@@ -67,8 +67,9 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 }
 
 export function normalizeCategory(raw: string): TreatmentCategory {
-  if (raw === 'vacuna') return 'vacuna';
-  if (raw.endsWith('interno') || raw.endsWith('interna')) return 'desparasitacion_interna';
+  const c = (raw ?? '').toLowerCase();
+  if (c.includes('vacuna')) return 'vacuna';
+  if (c.includes('intern')) return 'desparasitacion_interna';
   return 'desparasitacion_externa';
 }
 

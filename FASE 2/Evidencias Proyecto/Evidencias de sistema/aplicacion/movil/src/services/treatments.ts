@@ -66,6 +66,70 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
+function mapCatalogRow(row: Record<string, unknown>): TreatmentCatalogItem {
+  return {
+    id: Number(row.id),
+    especie_id: Number(row.especie_id),
+    especie_nombre: String(row.especie_nombre || ''),
+    categoria: (row.categoria || row.tipo || 'vacuna') as TreatmentCategory,
+    nombre: String(row.nombre || ''),
+    intervalo_refuerzo_dias:
+      typeof row.intervalo_refuerzo_dias === 'number'
+        ? row.intervalo_refuerzo_dias
+        : typeof row.dias_sugeridos_refuerzo === 'number'
+        ? row.dias_sugeridos_refuerzo
+        : null,
+    descripcion:
+      typeof row.descripcion === 'string'
+        ? row.descripcion
+        : row.es_obligatoria === true
+        ? 'Vacuna obligatoria recomendada'
+        : null,
+  };
+}
+
+function mapRecordRow(row: Record<string, unknown>): PetTreatmentRecord {
+  return {
+    id: Number(row.id),
+    mascota_id: Number(row.mascota_id),
+    tratamiento_id: Number(row.tratamiento_id),
+    tratamiento_nombre: String(row.tratamiento_nombre || ''),
+    tratamiento_categoria: (row.tratamiento_categoria ||
+      row.tratamiento_tipo ||
+      'vacuna') as TreatmentCategory,
+    intervalo_refuerzo_dias:
+      typeof row.intervalo_refuerzo_dias === 'number'
+        ? row.intervalo_refuerzo_dias
+        : typeof row.dias_sugeridos_refuerzo === 'number'
+        ? row.dias_sugeridos_refuerzo
+        : null,
+    fecha_aplicacion: String(row.fecha_aplicacion || ''),
+    fecha_proximo_refuerzo:
+      typeof row.fecha_proximo_refuerzo === 'string'
+        ? row.fecha_proximo_refuerzo
+        : null,
+    lote_producto:
+      typeof row.lote_producto === 'string'
+        ? row.lote_producto
+        : typeof row.veterinario_nombre === 'string'
+        ? row.veterinario_nombre
+        : null,
+    veterinaria_nombre:
+      typeof row.veterinaria_nombre === 'string'
+        ? row.veterinaria_nombre
+        : typeof row.clinica_nombre === 'string'
+        ? row.clinica_nombre
+        : null,
+    notas:
+      typeof row.notas === 'string'
+        ? row.notas
+        : typeof row.observaciones === 'string'
+        ? row.observaciones
+        : null,
+    creado_en: String(row.creado_en || row.created_at || ''),
+  };
+}
+
 export async function fetchTreatmentCatalog(
   especieId?: number,
   categoria?: TreatmentCategory
@@ -85,7 +149,8 @@ export async function fetchTreatmentCatalog(
   if (!response.ok) {
     throw new Error(data.error || 'Error al obtener catálogo de tratamientos');
   }
-  return data.treatments;
+  const rawList = Array.isArray(data.treatments) ? data.treatments : [];
+  return rawList.map(mapCatalogRow);
 }
 
 export async function fetchPetTreatments(
@@ -100,7 +165,12 @@ export async function fetchPetTreatments(
   if (!response.ok) {
     throw new Error(data.error || 'Error al obtener carnet sanitario');
   }
-  return data.records;
+  const rawList = Array.isArray(data.treatments)
+    ? data.treatments
+    : Array.isArray(data.records)
+    ? data.records
+    : [];
+  return rawList.map(mapRecordRow);
 }
 
 export async function createPetTreatment(
@@ -108,19 +178,27 @@ export async function createPetTreatment(
   payload: TreatmentPayload
 ): Promise<PetTreatmentRecord> {
   const headers = await getAuthHeaders();
+  const body = {
+    tratamiento_id: payload.tratamiento_id,
+    fecha_aplicacion: payload.fecha_aplicacion,
+    fecha_proximo_refuerzo: payload.fecha_proximo_refuerzo ?? null,
+    clinica_nombre: payload.veterinaria_nombre ?? null,
+    veterinario_nombre: payload.lote_producto ?? null,
+    observaciones: payload.notas ?? null,
+  };
   const response = await fetch(
     `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PETS.TREATMENTS(petId)}`,
     {
       method: 'POST',
       headers,
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     }
   );
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.error || 'Error al registrar aplicación');
   }
-  return data.record;
+  return mapRecordRow(data.treatment || data.record || {});
 }
 
 export async function updatePetTreatment(
@@ -129,19 +207,27 @@ export async function updatePetTreatment(
   payload: TreatmentPayload
 ): Promise<PetTreatmentRecord> {
   const headers = await getAuthHeaders();
+  const body = {
+    tratamiento_id: payload.tratamiento_id,
+    fecha_aplicacion: payload.fecha_aplicacion,
+    fecha_proximo_refuerzo: payload.fecha_proximo_refuerzo ?? null,
+    clinica_nombre: payload.veterinaria_nombre ?? null,
+    veterinario_nombre: payload.lote_producto ?? null,
+    observaciones: payload.notas ?? null,
+  };
   const response = await fetch(
     `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PETS.TREATMENT_DETAIL(petId, recordId)}`,
     {
       method: 'PUT',
       headers,
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     }
   );
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.error || 'Error al actualizar aplicación');
   }
-  return data.record;
+  return mapRecordRow(data.treatment || data.record || {});
 }
 
 export async function deletePetTreatment(
@@ -172,7 +258,41 @@ export async function fetchCalendar(): Promise<CalendarEventItem[]> {
   if (!response.ok) {
     throw new Error(data.error || 'Error al cargar calendario sanitario');
   }
-  return data.events;
+  const rawList = Array.isArray(data.reminders)
+    ? data.reminders
+    : Array.isArray(data.events)
+    ? data.events
+    : [];
+  return rawList.map((row: Record<string, unknown>) => {
+    const rawEstado = String(row.estado_refuerzo || row.estado || 'vigente');
+    const estado: 'vencido' | 'proximo' | 'al_dia' =
+      rawEstado === 'atrasado' || rawEstado === 'vencido'
+        ? 'vencido'
+        : rawEstado === 'proximo'
+        ? 'proximo'
+        : 'al_dia';
+    return {
+      id: Number(row.id),
+      mascota_id: Number(row.mascota_id),
+      mascota_nombre: String(row.mascota_nombre || ''),
+      especie_nombre: String(row.especie_nombre || ''),
+      tratamiento_id: Number(row.tratamiento_id),
+      tratamiento_nombre: String(row.tratamiento_nombre || ''),
+      tratamiento_categoria: (row.tratamiento_categoria ||
+        row.tratamiento_tipo ||
+        'vacuna') as TreatmentCategory,
+      fecha_aplicacion: String(row.fecha_aplicacion || ''),
+      fecha_proximo_refuerzo: String(row.fecha_proximo_refuerzo || ''),
+      veterinaria_nombre:
+        typeof row.clinica_nombre === 'string'
+          ? row.clinica_nombre
+          : typeof row.veterinaria_nombre === 'string'
+          ? row.veterinaria_nombre
+          : null,
+      dias_restantes: Number(row.dias_restantes ?? 0),
+      estado,
+    };
+  });
 }
 
 export function formatCategoryLabel(categoria: TreatmentCategory): string {

@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { env } from './config/env';
+import { ensureDatabaseInitialized } from './db/init';
 import healthRouter from './routes/health';
 import authRouter from './routes/auth';
 import petsRouter from './routes/pets';
@@ -20,8 +21,14 @@ app.use('/api', authRouter);
 app.use('/api', petsRouter);
 app.use('/api', treatmentsRouter);
 
-app.listen(env.port, () => {
-  console.log(`Server listening on port ${env.port}`);
-});
+ensureDatabaseInitialized()
+  .catch((err) => {
+    console.error('Database initialization warning:', err);
+  })
+  .finally(() => {
+    app.listen(env.port, () => {
+      console.log(`Server listening on port ${env.port}`);
+    });
+  });
 
 export default app;

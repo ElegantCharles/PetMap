@@ -15,7 +15,7 @@ export const env = {
     password: process.env.POSTGRES_PASSWORD || 'meinpets_password',
   },
   jwt: {
-    secret: process.env.JWT_SECRET || '',
+    secret: process.env.JWT_SECRET || 'change_me_in_env',
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
 };

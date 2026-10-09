@@ -84,4 +84,6 @@ WHERE NOT EXISTS (SELECT 1 FROM establecimientos WHERE nombre = 'Pet Shop y Farm
 
 INSERT INTO usuarios (email, password_hash, nombre_completo)
 VALUES ('demo@meinpets.cl', '$2b$10$3U2E6AYr8qeCO35wtKPohOH/5eyH.fMX22lxYDjVPeea6gafRwjKG', 'Tutor Demo MeinPets')
-ON CONFLICT (email) DO NOTHING;
+ON CONFLICT (email) DO UPDATE
+SET password_hash = EXCLUDED.password_hash,
+    nombre_completo = EXCLUDED.nombre_completo;

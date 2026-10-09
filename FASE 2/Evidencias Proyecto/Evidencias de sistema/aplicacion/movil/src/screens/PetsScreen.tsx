@@ -1,108 +1,255 @@
-import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { PetsScreenProps } from '../navigation/types';
-import { API_CONFIG } from '../config/api';
+import { getSession, clearSession, AuthUser } from '../services/auth';
+import { Pet, fetchPets, formatPetAge } from '../services/pets';
+import {
+  Avatar,
+  ErrorBox,
+  IconButton,
+  IconCalendar,
+  IconChevronRight,
+  IconMapPin,
+  IconMore,
+  IconPaw,
+  IconPlus,
+  LinkRow,
+  PopoverMenu,
+  PrimaryButton,
+  TextButton,
+} from '../components';
+import { colors, floatingShadow, fonts, radii, type as t } from '../theme';
 
 export default function PetsScreen({ navigation }: PetsScreenProps) {
+  const insets = useSafeAreaInsets();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [pets, setPets] = useState<Pet[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setErrorMessage(null);
+    try {
+      const session = await getSession();
+      if (!session?.token) {
+        navigation.replace('Login');
+        return;
+      }
+      setUser(session.user);
+      const list = await fetchPets();
+      setPets(list);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : 'No se pudieron cargar tus mascotas. Intenta de nuevo.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [navigation]);
+
+  useEffect(() => {
+    loadData();
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadData();
+    });
+    return unsubscribe;
+  }, [navigation, loadData]);
+
+  const handleLogout = async () => {
+    setMenuOpen(false);
+    await clearSession();
+    navigation.replace('Login');
+  };
+
+  const firstName = (user?.nombre_completo ?? '').trim().split(/\s+/)[0] ?? '';
+
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Mis Mascotas</Text>
-        <Text style={styles.emptyText}>No hay mascotas registradas todavía.</Text>
+    <View style={styles.screen}>
+      <StatusBar style="light" />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.column}>
+          {/* Cabecera */}
+          <View style={[styles.hero, { paddingTop: insets.top + 16 }]}>
+            <View style={styles.heroRow}>
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text accessibilityRole="header" numberOfLines={1} style={[t.petName, { color: colors.onTeal }]}>
+                  {firstName ? `Hola, ${firstName}` : 'Mis mascotas'}
+                </Text>
+                {user ? (
+                  <Text numberOfLines={1} style={[t.body, { color: colors.onTealSoft }]}>
+                    {user.email}
+                  </Text>
+                ) : null}
+              </View>
+              <IconButton label="Más opciones" onPress={() => setMenuOpen(true)} onTeal>
+                <IconMore color={colors.onTeal} />
+              </IconButton>
+            </View>
+          </View>
 
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate('Map')}
-        >
-          <Text style={styles.buttonText}>Ver Mapa</Text>
-        </TouchableOpacity>
+          <View style={styles.body}>
+            {errorMessage ? <ErrorBox message={errorMessage} /> : null}
 
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={() => navigation.navigate('Login')}
-        >
-          <Text style={styles.secondaryButtonText}>Volver a Acceso</Text>
-        </TouchableOpacity>
-      </View>
+            {loading && pets.length === 0 ? (
+              <View style={[styles.floatCard, { alignItems: 'center', paddingVertical: 32 }]}>
+                <ActivityIndicator size="large" color={colors.teal} />
+                <Text style={[t.body, { color: colors.inkSoft, marginTop: 12 }]}>Cargando tus mascotas…</Text>
+              </View>
+            ) : pets.length === 0 ? (
+              <View style={styles.floatCard}>
+                <View style={styles.emptyRow}>
+                  <View style={styles.emptyIcon}>
+                    <IconPaw size={26} color={colors.teal} />
+                  </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={[t.cardTitle, { color: colors.ink }]}>Aún no tienes mascotas</Text>
+                    <Text style={[t.small, { color: colors.inkSoft }]}>
+                      Crea la ficha de tu perro o gato y lleva su carnet de vacunas al día.
+                    </Text>
+                  </View>
+                </View>
+                <PrimaryButton
+                  label="Registrar mascota"
+                  onPress={() => navigation.navigate('PetForm')}
+                  icon={<IconPlus color={colors.onTeal} size={20} />}
+                  style={{ height: 52, borderRadius: 16 }}
+                />
+              </View>
+            ) : (
+              <View style={styles.floatCard}>
+                <View style={styles.listHeader}>
+                  <Text style={[t.cardTitle, { color: colors.ink, flex: 1 }]}>Tus mascotas</Text>
+                  <TextButton
+                    label="Agregar"
+                    onPress={() => navigation.navigate('PetForm')}
+                    icon={<IconPlus color={colors.teal} size={18} />}
+                  />
+                </View>
+                {pets.map((pet, index) => (
+                  <Pressable
+                    key={pet.id}
+                    onPress={() => navigation.navigate('PetDetail', { petId: pet.id })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${pet.nombre}, ${pet.raza_nombre || 'Mestizo'}, ${formatPetAge(pet.fecha_nacimiento)}. Ver ficha`}
+                    style={({ pressed }) => [
+                      styles.petRow,
+                      index > 0 && styles.petRowDivider,
+                      pressed && { backgroundColor: colors.mintSelected },
+                    ]}
+                  >
+                    <Avatar name={pet.nombre} size={52} />
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text numberOfLines={1} style={{ fontFamily: fonts.displaySemi, fontSize: 19, color: colors.ink }}>
+                        {pet.nombre}
+                      </Text>
+                      <Text numberOfLines={1} style={[t.small, { color: colors.inkSoft }]}>
+                        {pet.raza_nombre || 'Mestizo'} · {pet.sexo === 'macho' ? 'Macho' : 'Hembra'} ·{' '}
+                        {formatPetAge(pet.fecha_nacimiento)}
+                      </Text>
+                    </View>
+                    <IconChevronRight color={colors.inkSoft} size={20} />
+                  </Pressable>
+                ))}
+              </View>
+            )}
 
-      <View style={styles.footer}>
-        <Text style={styles.footerLabel}>API configurada en:</Text>
-        <Text style={styles.footerValue}>{API_CONFIG.BASE_URL}</Text>
-      </View>
+            <LinkRow
+              icon={<IconCalendar size={20} color={colors.teal} />}
+              label="Calendario de refuerzos"
+              onPress={() => navigation.navigate('Calendar')}
+            />
+            <LinkRow
+              icon={<IconMapPin size={20} color={colors.teal} />}
+              label="Mapa veterinario"
+              onPress={() => navigation.navigate('Map')}
+            />
+          </View>
+        </View>
+      </ScrollView>
+
+      <PopoverMenu
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        items={[{ label: 'Cerrar sesión', onPress: handleLogout, danger: true }]}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.ground,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    backgroundColor: colors.ground,
+  },
+  column: {
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
+  },
+  hero: {
+    backgroundColor: colors.teal,
+    borderBottomLeftRadius: radii.hero,
+    borderBottomRightRadius: radii.hero,
+    paddingBottom: 56,
+    paddingHorizontal: 20,
+  },
+  heroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  body: {
+    marginTop: -36,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    gap: 12,
+  },
+  floatCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    padding: 20,
+    gap: 16,
+    ...floatingShadow,
+  },
+  emptyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  emptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: colors.mint,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
   },
-  card: {
-    width: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
+  listHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    marginBottom: -4,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 12,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: '#6B7280',
-    marginBottom: 32,
-    textAlign: 'center',
-  },
-  primaryButton: {
-    width: '100%',
-    backgroundColor: '#059669',
-    paddingVertical: 14,
-    borderRadius: 10,
+  petRow: {
+    minHeight: 76,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    gap: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
   },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    width: '100%',
-    backgroundColor: '#E5E7EB',
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    color: '#374151',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 32,
-    alignItems: 'center',
-  },
-  footerLabel: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  footerValue: {
-    fontSize: 12,
-    color: '#4B5563',
-    fontWeight: '500',
-    marginTop: 2,
+  petRowDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.divider,
   },
 });

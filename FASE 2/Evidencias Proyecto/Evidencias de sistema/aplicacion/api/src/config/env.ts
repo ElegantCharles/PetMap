@@ -1,6 +1,8 @@
+import path from 'path';
 import dotenv from 'dotenv';
 
 dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
 
 export const env = {
   port: parseInt(process.env.PORT || '3000', 10),
@@ -11,5 +13,9 @@ export const env = {
     database: process.env.POSTGRES_DB || 'meinpets_db',
     user: process.env.POSTGRES_USER || 'meinpets_user',
     password: process.env.POSTGRES_PASSWORD || 'meinpets_password',
+  },
+  jwt: {
+    secret: process.env.JWT_SECRET || 'change_me_in_env',
+    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
 };

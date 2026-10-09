@@ -1,107 +1,229 @@
-import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { LoginScreenProps } from '../navigation/types';
-import { API_CONFIG } from '../config/api';
+import { loginRequest, getSession, fetchProfileRequest, clearSession } from '../services/auth';
+import {
+  ErrorBox,
+  IconMapPin,
+  IconPaw,
+  LinkRow,
+  PrimaryButton,
+  TextButton,
+  TextField,
+} from '../components';
+import { colors, floatingShadow, radii, type as t } from '../theme';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginScreen({ navigation }: LoginScreenProps) {
+  const insets = useSafeAreaInsets();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    async function restoreSession() {
+      try {
+        const stored = await getSession();
+        if (stored?.token) {
+          await fetchProfileRequest(stored.token);
+          if (mounted) {
+            navigation.replace('Pets');
+            return;
+          }
+        }
+      } catch {
+        await clearSession();
+      } finally {
+        if (mounted) {
+          setCheckingSession(false);
+        }
+      }
+    }
+    restoreSession();
+    return () => {
+      mounted = false;
+    };
+  }, [navigation]);
+
+  const handleLogin = async () => {
+    setErrorMessage(null);
+
+    const trimmedEmail = email.trim().toLowerCase();
+
+    if (!trimmedEmail || !password) {
+      setErrorMessage('Escribe tu correo y tu contraseña.');
+      return;
+    }
+
+    if (!EMAIL_REGEX.test(trimmedEmail)) {
+      setErrorMessage('El correo no parece válido. Revisa que tenga @ y un dominio.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await loginRequest(trimmedEmail, password);
+      navigation.replace('Pets');
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : 'No se pudo conectar con el servidor. Intenta de nuevo.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (checkingSession) {
+    return (
+      <View style={styles.center}>
+        <StatusBar style="dark" />
+        <ActivityIndicator size="large" color={colors.teal} />
+        <Text style={[t.body, { color: colors.inkSoft, marginTop: 12 }]}>Revisando tu sesión…</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>MeinPets</Text>
-        <Text style={styles.subtitle}>Pantalla de Acceso</Text>
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <StatusBar style="light" />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.column}>
+          <View style={[styles.hero, { paddingTop: insets.top + 40 }]}>
+            <View
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              style={styles.brandMark}
+            >
+              <IconPaw size={38} color={colors.ink} />
+            </View>
+            <Text accessibilityRole="header" style={[t.petName, { color: colors.onTeal }]}>
+              MeinPets
+            </Text>
+            <Text style={[t.body, { color: colors.onTealSoft }]}>
+              El carnet de salud de tu mascota, siempre a mano.
+            </Text>
+          </View>
 
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate('Pets')}
-        >
-          <Text style={styles.buttonText}>Ingresar a Mascotas</Text>
-        </TouchableOpacity>
+          <View style={styles.body}>
+            <View style={styles.floatCard}>
+              {errorMessage ? <ErrorBox message={errorMessage} /> : null}
 
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={() => navigation.navigate('Map')}
-        >
-          <Text style={styles.secondaryButtonText}>Ver Mapa Directo</Text>
-        </TouchableOpacity>
-      </View>
+              <TextField
+                label="Correo"
+                placeholder="correo@ejemplo.cl"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                value={email}
+                onChangeText={setEmail}
+                editable={!loading}
+              />
+              <TextField
+                label="Contraseña"
+                placeholder="Tu contraseña"
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+                editable={!loading}
+                returnKeyType="go"
+                onSubmitEditing={handleLogin}
+              />
 
-      <View style={styles.footer}>
-        <Text style={styles.footerLabel}>API configurada en:</Text>
-        <Text style={styles.footerValue}>{API_CONFIG.BASE_URL}</Text>
-      </View>
-    </View>
+              <PrimaryButton label="Iniciar sesión" onPress={handleLogin} loading={loading} />
+            </View>
+
+            <TextButton
+              label="Crear cuenta nueva"
+              onPress={() => navigation.navigate('Register')}
+              disabled={loading}
+              style={{ alignSelf: 'center' }}
+            />
+
+            <LinkRow
+              icon={<IconMapPin size={20} color={colors.teal} />}
+              label="Explorar mapa veterinario"
+              onPress={() => navigation.navigate('Map')}
+            />
+          </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.ground,
+  },
+  center: {
+    flex: 1,
+    backgroundColor: colors.ground,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
   },
-  card: {
+  scrollContent: {
+    flexGrow: 1,
+    backgroundColor: colors.ground,
+  },
+  column: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    maxWidth: 480,
+    alignSelf: 'center',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 8,
+  hero: {
+    backgroundColor: colors.teal,
+    borderBottomLeftRadius: radii.hero,
+    borderBottomRightRadius: radii.hero,
+    paddingHorizontal: 20,
+    paddingBottom: 72,
+    gap: 6,
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginBottom: 32,
-  },
-  primaryButton: {
-    width: '100%',
-    backgroundColor: '#2563EB',
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
+  brandMark: {
+    width: 72,
+    height: 72,
     marginBottom: 12,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    width: '100%',
-    backgroundColor: '#E5E7EB',
-    paddingVertical: 14,
-    borderRadius: 10,
+    backgroundColor: colors.ball,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 32,
+    borderBottomRightRadius: 36,
+    borderBottomLeftRadius: 33,
   },
-  secondaryButtonText: {
-    color: '#374151',
-    fontSize: 16,
-    fontWeight: '600',
+  body: {
+    marginTop: -40,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    gap: 12,
   },
-  footer: {
-    position: 'absolute',
-    bottom: 32,
-    alignItems: 'center',
-  },
-  footerLabel: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  footerValue: {
-    fontSize: 12,
-    color: '#4B5563',
-    fontWeight: '500',
-    marginTop: 2,
+  floatCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    padding: 20,
+    gap: 16,
+    ...floatingShadow,
   },
 });

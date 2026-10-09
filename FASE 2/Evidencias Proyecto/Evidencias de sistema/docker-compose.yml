@@ -33,11 +33,26 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-meinpets_db}
       POSTGRES_USER: ${POSTGRES_USER:-meinpets_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-meinpets_password}
+      JWT_SECRET: ${JWT_SECRET:-change_me_in_env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
     ports:
       - "${PORT:-3000}:3000"
+    volumes:
+      - ./base-de-datos/scripts:/app/sql:ro
     depends_on:
       db:
         condition: service_healthy
+
+  movil:
+    build:
+      context: ./aplicacion/movil
+      dockerfile: Dockerfile
+    container_name: meinpets_movil
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    depends_on:
+      - api
 
 volumes:
   meinpets_pgdata:

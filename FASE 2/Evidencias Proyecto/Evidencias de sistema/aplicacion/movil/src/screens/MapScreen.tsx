@@ -1,108 +1,81 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import type { MapScreenProps } from '../navigation/types';
-import { API_CONFIG } from '../config/api';
+import { IconMapPin, PrimaryButton, TopBar } from '../components';
+import { colors, radii, type as t } from '../theme';
 
+// Pantalla provisoria: el mapa real (MapLibre + geolocalización) llega en una fase posterior.
 export default function MapScreen({ navigation }: MapScreenProps) {
+  const goBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Login');
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Mapa</Text>
-        <Text style={styles.infoText}>Módulo de mapa (OpenStreetMap)</Text>
+    <View style={styles.screen}>
+      <StatusBar style="dark" />
+      <View style={styles.column}>
+        <TopBar title="Mapa veterinario" onBack={goBack} />
 
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate('Pets')}
-        >
-          <Text style={styles.buttonText}>Ver Mascotas</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={() => navigation.navigate('Login')}
-        >
-          <Text style={styles.secondaryButtonText}>Volver a Acceso</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.footer}>
-        <Text style={styles.footerLabel}>API configurada en:</Text>
-        <Text style={styles.footerValue}>{API_CONFIG.BASE_URL}</Text>
+        <View style={styles.content}>
+          <View style={styles.card}>
+            <View style={styles.icon}>
+              <IconMapPin size={30} color={colors.teal} />
+            </View>
+            <Text style={[t.cardTitle, { color: colors.ink, textAlign: 'center' }]}>
+              El mapa llega pronto
+            </Text>
+            <Text style={[t.body, { color: colors.inkSoft, textAlign: 'center' }]}>
+              Vas a poder buscar clínicas, laboratorios, peluquerías y tiendas para tu mascota cerca de ti.
+            </Text>
+            <PrimaryButton
+              label="Ver mis mascotas"
+              onPress={() => navigation.navigate('Pets')}
+              style={{ alignSelf: 'stretch', marginTop: 8 }}
+            />
+          </View>
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
+    backgroundColor: colors.ground,
+  },
+  column: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 40,
     justifyContent: 'center',
-    padding: 24,
   },
   card: {
-    width: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
     padding: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 12,
-  },
-  infoText: {
-    fontSize: 15,
-    color: '#6B7280',
-    marginBottom: 32,
-    textAlign: 'center',
-  },
-  primaryButton: {
-    width: '100%',
-    backgroundColor: '#D97706',
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    width: '100%',
-    backgroundColor: '#E5E7EB',
-    paddingVertical: 14,
-    borderRadius: 10,
+    gap: 12,
     alignItems: 'center',
   },
-  secondaryButtonText: {
-    color: '#374151',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 32,
+  icon: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: colors.mint,
     alignItems: 'center',
-  },
-  footerLabel: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  footerValue: {
-    fontSize: 12,
-    color: '#4B5563',
-    fontWeight: '500',
-    marginTop: 2,
+    justifyContent: 'center',
+    marginBottom: 4,
   },
 });

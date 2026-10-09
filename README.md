@@ -64,44 +64,50 @@ README.md
 
 ### Requisitos previos
 - Docker Desktop (en ejecución) y Docker Compose
-- Node.js 20 o superior
 
-### Servidor (API + base de datos)
-El entorno de desarrollo y evaluación se ejecuta de forma local y autónoma mediante Docker Compose.
+### Puesta en marcha (Base de datos + API + Aplicación móvil)
+Todo el entorno (base de datos, servidor API e interfaz móvil) está contenerizado y se levanta con un único comando mediante Docker Compose, sin necesidad de instalar Node.js ni dependencias manualmente en el equipo local:
 
 ```bash
 # 1. Clonar el repositorio y entrar a la carpeta del sistema
 git clone https://github.com/ElegantCharles/PetMap.git
 cd "PetMap/FASE 2/Evidencias Proyecto/Evidencias de sistema"
 
-# 2. Variables de entorno (copiar el ejemplo preconfigurado)
-cp .env.example .env
-# En Windows (PowerShell): Copy-Item .env.example .env
-# En Windows (CMD): copy .env.example .env
-
-# 3. (Importante si ya levantó el proyecto en semanas anteriores)
-# Limpiar el volumen antiguo para que PostgreSQL cargue las nuevas tablas y datos semilla:
-docker compose down -v
-
-# 4. Levantar la API y la base de datos con Docker Compose
+# 2. Construir y levantar todos los contenedores
 docker compose up --build
 ```
-Esto levantará automáticamente:
-* El contenedor **`meinpets_db`**: instancia local de PostgreSQL 16 con PostGIS y ejecución automática de los scripts en `base-de-datos/scripts/` (codificados en UTF-8 sin BOM):
+*(Si ya levantó el proyecto en semanas anteriores y desea recrear el volumen de base de datos limpio desde cero, ejecute antes `docker compose down -v`).*
+
+Esto levantará automáticamente tres contenedores:
+* **`meinpets_db`** (`puerto 5432`): instancia de PostgreSQL 16 con PostGIS y ejecución automática de los scripts en `base-de-datos/scripts/` (codificados en UTF-8 sin BOM):
   * `01_init.sql`: configuración `client_encoding = 'UTF8'` y habilitación de la extensión `postgis`.
   * `02_schema.sql`: creación del esquema relacional (`usuarios`, `especies`, `razas`, `mascotas`, `usuarios_mascotas`, `catalogo_tratamientos`, `historial_tratamientos` y `establecimientos`) e índices espaciales GiST.
   * `03_seed.sql`: carga inicial idempotente de especies (`Perro`, `Gato`), razas frecuentes, catálogo de vacunas y antiparasitarios (internos y externos) con sus descripciones clínicas e intervalos de refuerzo sugeridos, usuario de prueba y establecimientos.
   * `04_add_tratamientos_descripcion.sql`: migración idempotente que asegura la columna `descripcion` y sus textos en bases de datos preexistentes.
-* El contenedor **`meinpets_api`**: la API REST conectada a la base de datos con soporte de autenticación mediante hash `bcrypt` y tokens `JWT` (`JWT_SECRET` y `JWT_EXPIRES_IN` definidos en `.env`).
+* **`meinpets_api`** (`puerto 3000`): servidor API REST (Node.js + Express) conectado a la base de datos con soporte de autenticación mediante hash `bcrypt` y tokens `JWT`, además de verificación idempotente de los scripts SQL al iniciar.
+* **`meinpets_movil`** (`puerto 8081`): cliente de la aplicación móvil (React Native + Expo) empaquetado para navegador web y conectado automáticamente a `http://localhost:3000/api`.
+
+---
+
+### Visualización de la aplicación móvil
+
+Una vez que los tres contenedores estén en ejecución:
+
+1. Abrir el navegador web en **`http://localhost:8081`**.
+2. Para visualizar la interfaz con las proporciones exactas de un teléfono, se recomienda presionar **`F12`** (Herramientas para desarrolladores) y activar el icono de **vista de dispositivo móvil** (*Toggle device toolbar* o `Ctrl + Shift + M`).
+3. Ingresar con las credenciales de prueba precargadas o registrar una cuenta nueva desde **Crear cuenta nueva**:
+   - **Correo electrónico:** `demo@meinpets.cl`
+   - **Contraseña:** `Password123`
+
+Podrá interactuar y navegar entre las pantallas de **Iniciar Sesión**, **Crear Cuenta**, **Mis Mascotas**, **Registrar Mascota**, **Ficha de Mascota y Carnet Sanitario**, **Registrar Dosis**, **Calendario de Refuerzos** y **Mapa**.
+
+---
+
+### Verificación y endpoints de la API
 
 La API queda disponible en `http://localhost:3000` (y bajo el prefijo `http://localhost:3000/api`).
 
-#### Credenciales de prueba precargadas
-Puede registrar una cuenta nueva desde la pantalla **Crear cuenta** o ingresar directamente con el usuario de prueba incluido en `03_seed.sql`:
-- **Correo electrónico:** `demo@meinpets.cl`
-- **Contraseña:** `Password123`
-
-Para comprobar el correcto funcionamiento y la conexión con la base de datos:
+Para comprobar el estado del servidor y la conexión con PostGIS:
 - **Ruta de verificación:** `http://localhost:3000/health` (o `http://localhost:3000/api/health`)
 - **Respuesta esperada:**
   ```json
@@ -153,45 +159,6 @@ Para detener los contenedores:
 ```bash
 docker compose down
 ```
-
-*(Opcional para desarrollo sin Docker en la API: Si se prefiere ejecutar la API directamente con Node.js (`npm run dev`), cambiar `POSTGRES_HOST=db` por `POSTGRES_HOST=localhost` en el archivo `.env` manteniendo el contenedor de la base de datos activo).*
-
----
-
-### Aplicación móvil
-El cliente fue desarrollado con React Native y Expo. La forma recomendada de evaluación es en un **dispositivo móvil físico mediante código QR**, ya que permite apreciar la experiencia nativa de la aplicación. De forma alternativa y cómoda para revisión rápida, se incluye la opción de ejecutarla directamente en el **navegador web** de la computadora.
-
-#### 1. Visualización Recomendada: Dispositivo Móvil Físico (Expo Go con QR)
-Permite validar el comportamiento nativo, gestos táctiles y transiciones fluidas en teléfono real:
-
-1. **Instalar la aplicación Expo Go** en el celular (Google Play Store en Android o App Store en iOS).
-2. **Conectar el teléfono a la misma red Wi-Fi** que la computadora.
-3. **Configurar la IP local en `src/config/api.ts`:** Reemplazar la IP por la dirección IPv4 Wi-Fi local de su computador (obtenible con `ipconfig` en Windows o `ifconfig` en macOS/Linux).
-4. **Iniciar el servidor de desarrollo:**
-   ```bash
-   cd "FASE 2/Evidencias Proyecto/Evidencias de sistema/aplicacion/movil"
-   npm install   # Solo la primera vez tras clonar
-   npm start
-   ```
-5. **Escanear el código QR generado en la terminal:**
-   - **Android:** Abrir **Expo Go** y presionar *"Scan QR code"*.
-   - **iOS:** Enfocar el código con la aplicación de la **Cámara** para abrir en Expo Go (en iOS puede ser necesario iniciar sesión con una cuenta de Expo).
-
-Podrá interactuar y navegar entre las pantallas de **Iniciar Sesión**, **Crear Cuenta**, **Mis Mascotas**, **Registrar Mascota**, **Ficha de Mascota y Carnet Sanitario**, **Registrar Dosis**, **Calendario de Refuerzos** y **Mapa**.
-
----
-
-#### 2. Visualización Alternativa y Cómoda: Navegador Web
-Si no se dispone de un dispositivo móvil en el momento o se prefiere una revisión inmediata en el mismo computador sin configurar direcciones IP:
-
-```bash
-cd "FASE 2/Evidencias Proyecto/Evidencias de sistema/aplicacion/movil"
-npm install   # Solo la primera vez tras clonar
-npm run web
-```
-*(O presionando la tecla `w` en la consola donde ya se encuentre ejecutando `npm start`).*
-
-La aplicación se abrirá en `http://localhost:8081` (optimizada en una columna móvil centrada de hasta `480 px`) y se conectará automáticamente a `http://localhost:3000/api` sin necesidad de editar `src/config/api.ts`.
 
 ## 4. Integrantes del equipo y roles
 | Integrante | Rol |
